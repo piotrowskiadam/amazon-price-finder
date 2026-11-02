@@ -1,0 +1,3 @@
+# Deep Module Architecture with Explicit Seams
+
+We structure the backend around four deep modules (`InputResolver`, `MarketplaceGateway`, `ExchangeRateProvider`, and `PriceComparisonOrchestrator`), each exposing a minimal interface at a clean seam while hiding complex parsing, concurrency, retry, currency conversion, and ranking logic inside its implementation. External HTTP calls to Amazon and NBP sit behind adapter seams (`HttpMarketplaceGateway`, `NbpExchangeRateProvider`) so deterministic in-memory adapters (`FixtureMarketplaceGateway`, `StaticExchangeRateProvider`) can exercise the entire comparison and disambiguation pipeline in tests and demo mode without network flakiness.

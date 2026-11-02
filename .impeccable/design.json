@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T05:25:00.000Z",
+  "title": "Design System: EuroAmazon Dispatch",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Signal Vermilion",
+        "canonical": "#bf4520",
+        "tonalRamp": ["#2e0e05", "#521a0a", "#7a2912", "#a33817", "#bf4520", "#dc6643", "#f09d84", "#fbe6df"]
+      },
+      "winner-mint": {
+        "role": "secondary",
+        "displayName": "Clearance Mint",
+        "canonical": "#7be0ad",
+        "tonalRamp": ["#0e291b", "#15472f", "#1b6b45", "#279662", "#47bf86", "#7be0ad", "#b3f0d1", "#e6faef"]
+      },
+      "stock-bg": {
+        "role": "neutral",
+        "displayName": "Customs Slate Stock",
+        "canonical": "#eef2f6",
+        "tonalRamp": ["#141923", "#252f3f", "#334155", "#475569", "#64748b", "#94a3b8", "#dfe6ee", "#eef2f6"]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Manifest Headline",
+        "purpose": "Active product title in the comparison manifest header."
+      },
+      "title": {
+        "displayName": "Section Title",
+        "purpose": "Section bar titles and top brand identity."
+      },
+      "body": {
+        "displayName": "Body Copy",
+        "purpose": "Form inputs, helper copy, and candidate descriptions."
+      },
+      "label": {
+        "displayName": "Tabular Mono Label",
+        "purpose": "Currency chips, ASIN stamps, country codes, and numeric price cells."
+      }
+    },
+    "shadows": [
+      {
+        "name": "elevated-ledger",
+        "value": "0 6px 18px rgba(20, 25, 35, 0.07)",
+        "purpose": "Applied to top-level section containers against the slate stock ground."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-dispatch",
+        "value": "150ms ease-out",
+        "purpose": "Fast state transitions for buttons, row hover, and preset chips."
+      }
+    ],
+    "breakpoints": [
+      { "name": "table-stack", "value": "720px" },
+      { "name": "tablet", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Dispatch Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button triggering multi-country Amazon comparison.",
+      "html": "<button class=\"ds-btn-primary\">Sprawdź ceny w 9 krajach</button>",
+      "css": ".ds-btn-primary { min-height: 48px; padding: 0.65rem 1.25rem; font-family: 'Public Sans', sans-serif; font-size: 0.95rem; font-weight: 600; color: #ffffff; background-color: #bf4520; border: 1.5px solid #141923; border-radius: 4px; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-primary:hover { background-color: #a33817; } .ds-btn-primary:focus-visible { outline: 2.5px solid #bf4520; outline-offset: 2px; }"
+    },
+    {
+      "name": "ASIN / URL Search Input",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Monospace-enhanced input accepting Amazon URLs, ASINs, or keywords.",
+      "html": "<input class=\"ds-input-query\" type=\"text\" value=\"https://www.amazon.pl/Carrie-Sissy-Spacek/dp/B0791VZ99Y\" />",
+      "css": ".ds-input-query { width: 100%; min-height: 48px; padding: 0.65rem 0.85rem; font-family: 'Azeret Mono', monospace; font-size: 0.9375rem; color: #141923; background: #ffffff; border: 1.5px solid #334155; border-radius: 4px; } .ds-input-query:focus-visible { outline: 2.5px solid #bf4520; outline-offset: 2px; }"
+    },
+    {
+      "name": "NBP FX Rate Chip",
+      "kind": "chip",
+      "refersTo": "chip-fx",
+      "description": "Editable currency rate badge in the top utility bar.",
+      "html": "<label class=\"ds-fx-chip\"><span>1 EUR</span><input type=\"text\" value=\"4.3955\" /><span>zł</span></label>",
+      "css": ".ds-fx-chip { display: inline-flex; align-items: center; gap: 0.3rem; background: #252932; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 0.2rem 0.45rem; font-family: 'Azeret Mono', monospace; font-size: 0.78rem; color: #e2e6ee; } .ds-fx-chip input { width: 4.4rem; background: #14161b; color: #fff; border: 1px solid rgba(255,255,255,0.24); border-radius: 3px; text-align: right; font-family: 'Azeret Mono', monospace; font-weight: 600; }"
+    },
+    {
+      "name": "Winner Verdict Cell",
+      "kind": "card",
+      "refersTo": "card-winner",
+      "description": "Reversed carbon-navy summary plate highlighting the lowest landed PLN offer.",
+      "html": "<div class=\"ds-verdict-winner\"><span>Najniższa cena z dostawą (Landed PLN)</span><strong>74,99 zł</strong><small>Polska (amazon.pl)</small></div>",
+      "css": ".ds-verdict-winner { padding: 0.95rem 1rem; background: #141923; color: #eef2f6; display: flex; flex-direction: column; gap: 0.2rem; font-family: 'Public Sans', sans-serif; } .ds-verdict-winner span { font-size: 0.75rem; color: #c2ccd8; font-weight: 600; } .ds-verdict-winner strong { font-family: 'Azeret Mono', monospace; font-size: 1.15rem; color: #7be0ad; } .ds-verdict-winner small { font-size: 0.78rem; }"
+    },
+    {
+      "name": "Store Outbound Link",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Direct deep link to the regional Amazon product page (/dp/ASIN).",
+      "html": "<a class=\"ds-store-link\" href=\"#\">Otwórz amazon.de ↗</a>",
+      "css": ".ds-store-link { display: inline-flex; align-items: center; padding: 0.42rem 0.7rem; font-family: 'Azeret Mono', monospace; font-size: 0.78rem; font-weight: 600; color: #141923; background: #dfe6ee; border: 1px solid #141923; border-radius: 4px; text-decoration: none; transition: background-color 140ms ease-out, color 140ms ease-out; } .ds-store-link:hover { background: #bf4520; color: #ffffff; border-color: #bf4520; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Continental Rail & Parcel Dispatch Board",
+    "overview": "EuroAmazon Dispatch treats cross-border e-commerce comparison across 9 European and UK Amazon storefronts as a precision logistics and currency arbitrage manifest. Instead of decorative marketing cards or promotional banners, the interface is structured as a high-contrast tabular sheet where live NBP exchange rates, shelf prices, cross-border shipping quotes to Poland, and landed PLN totals lock into an exposed hairline grid.",
+    "keyCharacteristics": [
+      "Exposed structural cell hairlines (1px and 1.5px carbon-navy rules) that separate every currency input, verdict cell, and country row.",
+      "Reversed carbon-navy plate (#141923) with clearance mint (#7be0ad) highlights reserved exclusively for the #1 lowest landed PLN offer.",
+      "Strict tabular monospace alignment (Azeret Mono with tabular-nums) for all prices, exchange rates, ASIN stamps, and percentage deltas."
+    ],
+    "rules": [
+      {
+        "name": "The Single Reversed Plate Rule",
+        "body": "Only the #1 lowest landed PLN offer row and the primary winner verdict cell invert to Carbon Navy (#141923) with Clearance Mint (#7be0ad) numerals. Every other row stays on white ledger stock so the winning storefront is scannable in a split second.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numerals Rule",
+        "body": "Every price, shipping fee, exchange rate, and percentage delta is set in Azeret Mono with font-variant-numeric: tabular-nums right-aligned in its cell so decimal commas align vertically down all 9 rows.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do set all prices, exchange rates, and ASIN identifiers in Azeret Mono with font-variant-numeric: tabular-nums.",
+      "Do keep labels above form controls with tighter label-to-input spacing (0.35rem) than group-to-group spacing (1rem).",
+      "Do preserve inline editable inputs for both item price and shipping quote in every table row so users can override CAPTCHA-blocked or cart-specific postage rates."
+    ],
+    "donts": [
+      "Don't place kickers or eyebrows above section headings; let the heading and ASIN stamp carry hierarchy directly.",
+      "Don't use type=\"number\" on postal code or ASIN inputs; use type=\"text\" with appropriate inputmode and autocomplete.",
+      "Don't apply the reversed dark carbon plate (#141923) to more than the single #1 winning row in the comparison table."
+    ]
+  }
+}

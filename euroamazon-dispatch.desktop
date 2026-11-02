@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=EuroAmazon Dispatch (Amazon Price Finder)
+GenericName=Porównywarka cen Amazon UE i UK w PLN
+Comment=Standalone aplikacja do porównywania cen i dostawy w 9 sklepach Amazon (PL, DE, ES, IT, FR, NL, BE, SE, UK) wg kursów NBP
+Exec="/home/adampiotrowski/Desktop/Projekty programistyczne/Amazon Price Finder/bin/launch-app.sh"
+Path=/home/adampiotrowski/Desktop/Projekty programistyczne/Amazon Price Finder
+Icon=/home/adampiotrowski/Desktop/Projekty programistyczne/Amazon Price Finder/public/icon.svg
+Terminal=false
+Categories=Office;Finance;
+Keywords=amazon;price;ceny;porównywarka;pln;eur;gbp;nbp;zakupy;
+StartupNotify=true
+StartupWMClass=pl.euroamazon.Dispatch

@@ -1,0 +1,22 @@
+{
+  "name": "amazon-price-finder-eu",
+  "version": "1.0.0",
+  "description": "Cross-border European & UK Amazon price & shipping comparison engine in PLN",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node dist/src/server.js",
+    "start": "tsc && node dist/src/server.js",
+    "test": "tsc && node --test dist/tests/*.test.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "cheerio": "^1.0.0",
+    "hono": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architektura systemu — EuroAmazon Dispatch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #eef2f6;
+      --color-ink:     #141923;
+      --color-muted:   #334155;
+      --color-soft:    #475569;
+      --color-accent:  #bf4520;
+      --color-link:    #2e5aa8;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · Deep Modules &amp; Data Flow</p>
+    <h1>EuroAmazon Dispatch — Architektura Porównywarki Cen UE i UK</h1>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="eu-dispatch-arch-title eu-dispatch-arch-desc">
+        <title id="eu-dispatch-arch-title">Architektura modułów EuroAmazon Dispatch</title>
+        <desc id="eu-dispatch-arch-desc">Przepływ zapytania od interfejsu przeglądarki przez głębokie moduły InputResolver, PriceComparisonOrchestrator i MarketplaceGateway do 9 sklepów Amazon oraz API kursów walut NBP.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#38404f"/>
+          </marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#bf4520"/>
+          </marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/>
+          </marker>
+        </defs>
+
+        <!-- Background paper -->
+        <rect width="100%" height="100%" fill="#eef2f6"/>
+
+        <!-- ZONES (drawn before arrows and nodes) -->
+        <!-- Zone 1: Client Surface -->
+        <rect x="32" y="48" width="208" height="384" rx="8" fill="rgba(24,26,31,0.02)" stroke="rgba(24,26,31,0.12)" stroke-width="0.8"/>
+        <rect x="68" y="52" width="136" height="12" rx="2" fill="#eef2f6"/>
+        <text x="136" y="61" fill="#505a6b" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">CLIENT SURFACE</text>
+
+        <!-- Zone 2: Deep Modules (Node.js / Hono) -->
+        <rect x="304" y="48" width="352" height="384" rx="8" fill="rgba(24,26,31,0.02)" stroke="rgba(24,26,31,0.12)" stroke-width="0.8"/>
+        <rect x="384" y="52" width="192" height="12" rx="2" fill="#eef2f6"/>
+        <text x="480" y="61" fill="#505a6b" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">DEEP MODULES (HONO)</text>
+
+        <!-- Zone 3: External Providers -->
+        <rect x="720" y="48" width="208" height="384" rx="8" fill="rgba(24,26,31,0.02)" stroke="rgba(24,26,31,0.12)" stroke-width="0.8"/>
+        <rect x="752" y="52" width="144" height="12" rx="2" fill="#eef2f6"/>
+        <text x="824" y="61" fill="#505a6b" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">EXTERNAL PROVIDERS</text>
+
+        <!-- ARROWS & LABELS (drawn before node boxes) -->
+        <!-- 1. Command Deck -> InputResolver -->
+        <line x1="220" y1="132" x2="336" y2="132" stroke="#38404f" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="232" y="112" width="92" height="12" rx="2" fill="#eef2f6"/>
+        <text x="278" y="121" fill="#505a6b" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">URL / KEYWORD</text>
+
+        <!-- 2. InputResolver -> PriceComparisonOrchestrator -->
+        <line x1="480" y1="164" x2="480" y2="212" stroke="#38404f" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="488" y="180" width="44" height="12" rx="2" fill="#eef2f6"/>
+        <text x="510" y="189" fill="#505a6b" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">ASIN</text>
+
+        <!-- 3. PriceComparisonOrchestrator -> Comparison Matrix UI (Headline Accent Path) -->
+        <line x1="336" y1="248" x2="220" y2="248" stroke="#bf4520" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+        <rect x="236" y="228" width="84" height="12" rx="2" fill="#eef2f6"/>
+        <text x="278" y="237" fill="#bf4520" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">LANDED PLN</text>
+
+        <!-- 4. NBP FX API -> PriceComparisonOrchestrator -->
+        <line x1="740" y1="248" x2="624" y2="248" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="636" y="228" width="92" height="12" rx="2" fill="#eef2f6"/>
+        <text x="682" y="237" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">EUR/GBP/SEK</text>
+
+        <!-- 5. MarketplaceGateway -> PriceComparisonOrchestrator -->
+        <line x1="480" y1="340" x2="480" y2="280" stroke="#38404f" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="488" y="304" width="76" height="12" rx="2" fill="#eef2f6"/>
+        <text x="526" y="313" fill="#505a6b" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">9X OFFERS</text>
+
+        <!-- 6. MarketplaceGateway -> 9x Amazon EU & UK -->
+        <line x1="624" y1="376" x2="740" y2="376" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="632" y="356" width="100" height="12" rx="2" fill="#eef2f6"/>
+        <text x="682" y="365" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">HTTP /DP/ASIN</text>
+
+        <!-- 7. Command Deck -> Comparison Matrix UI (Interactive FX / Shipping Overrides) -->
+        <line x1="136" y1="164" x2="136" y2="212" stroke="#38404f" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="144" y="180" width="72" height="12" rx="2" fill="#eef2f6"/>
+        <text x="180" y="189" fill="#505a6b" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">FX SPREAD</text>
+
+        <!-- NODES -->
+        <!-- Node 1: Command Deck UI (input) -->
+        <rect x="52" y="96" width="168" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="52" y="96" width="168" height="68" rx="6" fill="rgba(56,64,79,0.10)" stroke="#505a6b" stroke-width="1"/>
+        <rect x="60" y="104" width="32" height="12" rx="2" fill="transparent" stroke="rgba(80,90,107,0.40)" stroke-width="0.8"/>
+        <text x="76" y="113" fill="#505a6b" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">UI</text>
+        <text x="136" y="132" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Command Deck</text>
+        <text x="136" y="148" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">URL · ASIN · Keyword</text>
+
+        <!-- Node 2: Comparison Matrix UI (input/view) -->
+        <rect x="52" y="212" width="168" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="52" y="212" width="168" height="68" rx="6" fill="#ffffff" stroke="#181a1f" stroke-width="1"/>
+        <rect x="60" y="220" width="36" height="12" rx="2" fill="transparent" stroke="rgba(24,26,31,0.40)" stroke-width="0.8"/>
+        <text x="78" y="229" fill="#181a1f" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">VIEW</text>
+        <text x="136" y="248" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Dispatch Ledger</text>
+        <text x="136" y="264" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">9x LandedOfferRow</text>
+
+        <!-- Node 3: InputResolver (backend) -->
+        <rect x="336" y="96" width="288" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="336" y="96" width="288" height="68" rx="6" fill="#ffffff" stroke="#181a1f" stroke-width="1"/>
+        <rect x="344" y="104" width="44" height="12" rx="2" fill="transparent" stroke="rgba(24,26,31,0.40)" stroke-width="0.8"/>
+        <text x="366" y="113" fill="#181a1f" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">MODULE</text>
+        <text x="480" y="132" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">InputResolver</text>
+        <text x="480" y="148" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">POST /api/resolve</text>
+
+        <!-- Node 4: PriceComparisonOrchestrator (FOCAL) -->
+        <rect x="336" y="212" width="288" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="336" y="212" width="288" height="68" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+        <rect x="344" y="220" width="40" height="12" rx="2" fill="transparent" stroke="rgba(191,69,32,0.50)" stroke-width="0.8"/>
+        <text x="364" y="229" fill="#bf4520" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FOCAL</text>
+        <text x="480" y="248" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">PriceComparisonOrchestrator</text>
+        <text x="480" y="264" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PLN Normalization &amp; Ranking</text>
+
+        <!-- Node 5: MarketplaceGateway & Parser (backend) -->
+        <rect x="336" y="340" width="288" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="336" y="340" width="288" height="68" rx="6" fill="#ffffff" stroke="#181a1f" stroke-width="1"/>
+        <rect x="344" y="348" width="40" height="12" rx="2" fill="transparent" stroke="rgba(24,26,31,0.40)" stroke-width="0.8"/>
+        <text x="364" y="357" fill="#181a1f" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SEAM</text>
+        <text x="480" y="376" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">MarketplaceGateway &amp; Parser</text>
+        <text x="480" y="392" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Cheerio BuyBox + Shipping</text>
+
+        <!-- Node 6: NBP ExchangeRateProvider (external) -->
+        <rect x="740" y="212" width="168" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="740" y="212" width="168" height="68" rx="6" fill="rgba(24,26,31,0.03)" stroke="rgba(24,26,31,0.30)" stroke-width="1"/>
+        <rect x="748" y="220" width="32" height="12" rx="2" fill="transparent" stroke="rgba(24,26,31,0.35)" stroke-width="0.8"/>
+        <text x="764" y="229" fill="#38404f" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+        <text x="824" y="248" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">NBP Web API</text>
+        <text x="824" y="264" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">api.nbp.pl/tables/A</text>
+
+        <!-- Node 7: 9x European & UK Amazon Stores (external) -->
+        <rect x="740" y="340" width="168" height="68" rx="6" fill="#eef2f6"/>
+        <rect x="740" y="340" width="168" height="68" rx="6" fill="rgba(24,26,31,0.03)" stroke="rgba(24,26,31,0.30)" stroke-width="1"/>
+        <rect x="748" y="348" width="32" height="12" rx="2" fill="transparent" stroke="rgba(24,26,31,0.35)" stroke-width="0.8"/>
+        <text x="764" y="357" fill="#38404f" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+        <text x="824" y="376" fill="#181a1f" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">9x Amazon EU &amp; UK</text>
+        <text x="824" y="392" fill="#38404f" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PL DE ES IT FR NL BE SE UK</text>
+
+        <!-- LEGEND STRIP AT BOTTOM -->
+        <line x1="32" y1="464" x2="928" y2="464" stroke="rgba(24,26,31,0.12)" stroke-width="0.8"/>
+        <text x="32" y="484" fill="#38404f" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+
+        <rect x="112" y="476" width="12" height="12" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+        <text x="132" y="485" fill="#38404f" font-size="9" font-family="'Geist', system-ui, sans-serif">Focal Orchestrator</text>
+
+        <rect x="260" y="476" width="12" height="12" rx="2" fill="#ffffff" stroke="#181a1f" stroke-width="1"/>
+        <text x="280" y="485" fill="#38404f" font-size="9" font-family="'Geist', system-ui, sans-serif">Deep Module / View</text>
+
+        <rect x="408" y="476" width="12" height="12" rx="2" fill="rgba(56,64,79,0.10)" stroke="#505a6b" stroke-width="1"/>
+        <text x="428" y="485" fill="#38404f" font-size="9" font-family="'Geist', system-ui, sans-serif">User Input Surface</text>
+
+        <rect x="556" y="476" width="12" height="12" rx="2" fill="rgba(24,26,31,0.03)" stroke="rgba(24,26,31,0.30)" stroke-width="1"/>
+        <text x="576" y="485" fill="#38404f" font-size="9" font-family="'Geist', system-ui, sans-serif">External HTTP / API</text>
+
+        <line x1="704" y1="482" x2="728" y2="482" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <text x="736" y="485" fill="#38404f" font-size="9" font-family="'Geist', system-ui, sans-serif">External Request</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
