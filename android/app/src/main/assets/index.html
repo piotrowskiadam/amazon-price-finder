@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>EuroAmazon Dispatch — Porównywarka Cen Amazon UE i UK w PLN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="ledger-topbar" role="banner">
+    <div class="topbar-brand">
+      <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+        <line x1="2" y1="9" x2="22" y2="9"></line>
+        <line x1="9" y1="9" x2="9" y2="21"></line>
+        <path d="M13 15h5m0 0-2-2m2 2-2 2"></path>
+      </svg>
+      <h1>EuroAmazon Dispatch</h1>
+      <span class="brand-subtitle">Manifest cenowy 9 rynków UE i Wielkiej Brytanii → PLN</span>
+    </div>
+
+    <div class="fx-strip" aria-label="Aktualne kursy walut NBP">
+      <div class="fx-meta">
+        <span id="fx-source-badge" class="status-pill">NBP Tabela A</span>
+        <span id="fx-date-label" class="fx-date">Ładowanie kursów…</span>
+      </div>
+      <div class="fx-rates-group">
+        <label class="fx-rate-chip" for="rate-eur-input">
+          <span class="fx-pair">1 EUR</span>
+          <input
+            type="text"
+            id="rate-eur-input"
+            name="rate_eur"
+            inputmode="decimal"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            value="4.3185"
+            aria-label="Kurs EUR do PLN"
+          >
+          <span class="fx-unit">zł</span>
+        </label>
+        <label class="fx-rate-chip" for="rate-gbp-input">
+          <span class="fx-pair">1 GBP</span>
+          <input
+            type="text"
+            id="rate-gbp-input"
+            name="rate_gbp"
+            inputmode="decimal"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            value="5.1490"
+            aria-label="Kurs GBP do PLN"
+          >
+          <span class="fx-unit">zł</span>
+        </label>
+        <label class="fx-rate-chip" for="rate-sek-input">
+          <span class="fx-pair">1 SEK</span>
+          <input
+            type="text"
+            id="rate-sek-input"
+            name="rate_sek"
+            inputmode="decimal"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            value="0.3782"
+            aria-label="Kurs SEK do PLN"
+          >
+          <span class="fx-unit">zł</span>
+        </label>
+      </div>
+      <a href="/diagram" class="diagram-link" target="_blank" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <path d="M10 6.5h4M17.5 10v4"></path>
+        </svg>
+        Schemat architektury
+      </a>
+    </div>
+  </header>
+
+  <main class="dispatch-workspace" id="main-content">
+    <section class="command-deck" aria-labelledby="command-deck-heading">
+      <div class="command-header-row">
+        <h2 id="command-deck-heading">Wyszukiwanie i identyfikacja katalogowa ASIN</h2>
+        <p class="command-helper">
+          Wklej pełny link z <code>amazon.pl</code> (lub innego sklepu UE/UK), podaj 10-znakowy kod <code>ASIN</code> albo wpisz frazę kluczową, aby wyświetlić do 20 pozycji i wskazać dokładne wydanie.
+        </p>
+      </div>
+
+      <form id="resolve-form" action="/api/resolve" method="GET" novalidate>
+        <div class="command-grid">
+          <div class="form-group query-field-group">
+            <label for="product-query-input">Link do produktu Amazon, kod ASIN lub słowo kluczowe</label>
+            <div class="input-with-clear">
+              <input
+                type="text"
+                id="product-query-input"
+                name="input"
+                required
+                autofocus
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                enterkeyhint="search"
+                value=""
+                placeholder="Wklej link z Amazon (np. amazon.pl/dp/...), kod ASIN lub wpisz nazwę produktu"
+                aria-describedby="query-input-hint query-input-error"
+              >
+            </div>
+            <span id="query-input-hint" class="field-hint">
+              Rozpoznaje linki <code>/dp/ASIN</code>, <code>/gp/product/ASIN</code> ze wszystkich 9 domen oraz zapytania tekstowe.
+            </span>
+            <span id="query-input-error" class="field-error" role="alert" aria-live="polite" hidden></span>
+          </div>
+
+          <div class="form-group market-field-group">
+            <label for="search-origin-select">Sklep bazowy dla słów kluczowych</label>
+            <select id="search-origin-select" name="marketplaceId">
+              <option value="PL" selected>Polska (amazon.pl)</option>
+              <option value="DE">Niemcy (amazon.de)</option>
+              <option value="UK">Wielka Brytania (amazon.co.uk)</option>
+              <option value="ES">Hiszpania (amazon.es)</option>
+              <option value="IT">Włochy (amazon.it)</option>
+              <option value="FR">Francja (amazon.fr)</option>
+            </select>
+          </div>
+
+          <div class="form-group submit-field-group">
+            <button type="submit" id="resolve-submit-btn" class="primary-dispatch-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="21" y1="21" x2="16.35" y2="16.35"></line>
+              </svg>
+              <span>Sprawdź ceny w 9 krajach</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="controls-subbar">
+          <fieldset class="spread-fieldset">
+            <legend>Spread przewalutowania płatności</legend>
+            <div class="radio-strip">
+              <label class="radio-option" for="spread-0">
+                <input type="radio" id="spread-0" name="fxSpreadPct" value="0" checked>
+                <span>0% (Kurs NBP / Revolut)</span>
+              </label>
+              <label class="radio-option" for="spread-2">
+                <input type="radio" id="spread-2" name="fxSpreadPct" value="2">
+                <span>+2,0% (Karta bankowa)</span>
+              </label>
+              <label class="radio-option" for="spread-35">
+                <input type="radio" id="spread-35" name="fxSpreadPct" value="3.5">
+                <span>+3,5% (Amazon Currency Converter)</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="presets-strip" aria-label="Szybkie przykłady testowe">
+            <span class="presets-label">Przykłady:</span>
+            <button
+              type="button"
+              class="preset-chip"
+              data-input="https://www.amazon.pl/Carrie-Sissy-Spacek/dp/B0791VZ99Y"
+            >
+              Carrie [Blu-ray] (B0791VZ99Y)
+            </button>
+            <button
+              type="button"
+              class="preset-chip"
+              data-input="https://www.amazon.pl/dp/B09XS7JWHH"
+            >
+              Sony WH-1000XM5 (B09XS7JWHH)
+            </button>
+            <button
+              type="button"
+              class="preset-chip"
+              data-input="https://www.amazon.de/dp/B08N5WRWNW"
+            >
+              Logitech MX Master 3S (B08N5WRWNW)
+            </button>
+            <button
+              type="button"
+              class="preset-chip preset-chip-keyword"
+              data-input="Carrie"
+            >
+              Słowo kluczowe: „Carrie” (lista 20 wydań)
+            </button>
+          </div>
+        </div>
+
+        <details class="session-drawer" id="session-drawer">
+          <summary>
+            <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            Parametry dostawy do Polski, ciasteczka sesji Amazon i tryb anty-CAPTCHA
+          </summary>
+          <div class="session-drawer-grid">
+            <div class="form-group">
+              <label for="postal-code-input">Polski kod pocztowy docelowy</label>
+              <input
+                type="text"
+                id="postal-code-input"
+                name="postalCode"
+                autocomplete="postal-code"
+                inputmode="numeric"
+                autocorrect="off"
+                value="00-001"
+                placeholder="00-001"
+              >
+              <span class="field-hint">Używany jako kontekst lokalizacji dostawy do Polski.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="cookie-header-input">Opcjonalny nagłówek Cookie sesji Amazon (dla zalogowanego konta)</label>
+              <input
+                type="text"
+                id="cookie-header-input"
+                name="cookieHeader"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="np. session-id=123-4567890; ubid-acbpl=..."
+              >
+              <span class="field-hint">Pozwala pobrać indywidualne stawki dostawy przypisane do Twojego konta.</span>
+            </div>
+          </div>
+        </details>
+      </form>
+    </section>
+
+    <!-- Live Scraping Progress Panel -->
+    <section
+      id="scrape-progress-panel"
+      class="scrape-progress-panel"
+      aria-live="polite"
+      hidden
+    >
+      <div class="scrape-progress-header">
+        <div class="scrape-progress-title-wrap">
+          <span class="scrape-spinner" aria-hidden="true"></span>
+          <strong id="scrape-progress-title" class="scrape-progress-title">
+            Pobieranie rzeczywistych ofert i dostępności z 9 sklepów Amazon…
+          </strong>
+        </div>
+        <span id="scrape-progress-counter" class="scrape-progress-counter">0 / 9 (0%)</span>
+      </div>
+      <div
+        id="scrape-progress-track"
+        class="scrape-progress-track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="9"
+        aria-valuenow="0"
+        aria-label="Postęp pobierania ofert ze sklepów Amazon"
+      >
+        <div id="scrape-progress-fill" class="scrape-progress-fill" style="width: 0%"></div>
+      </div>
+      <div id="scrape-market-chips" class="scrape-market-chips">
+        <span class="scrape-chip" data-market="PL">PL · amazon.pl</span>
+        <span class="scrape-chip" data-market="DE">DE · amazon.de</span>
+        <span class="scrape-chip" data-market="ES">ES · amazon.es</span>
+        <span class="scrape-chip" data-market="IT">IT · amazon.it</span>
+        <span class="scrape-chip" data-market="FR">FR · amazon.fr</span>
+        <span class="scrape-chip" data-market="NL">NL · amazon.nl</span>
+        <span class="scrape-chip" data-market="BE">BE · amazon.com.be</span>
+        <span class="scrape-chip" data-market="SE">SE · amazon.se</span>
+        <span class="scrape-chip" data-market="UK">UK · amazon.co.uk</span>
+      </div>
+    </section>
+
+    <section
+      id="candidates-section"
+      class="candidates-section"
+      aria-labelledby="candidates-heading"
+      hidden
+    >
+      <div class="section-bar candidates-header-bar">
+        <div class="candidates-header-copy">
+          <h2 id="candidates-heading">Wybierz właściwy produkt z wyników wyszukiwania</h2>
+          <p id="candidates-subtitle" class="section-subtext">
+            Kliknij wybrane wydanie, aby uruchomić porównanie cen i dostawy we wszystkich 9 sklepach Amazon (UE + UK).
+          </p>
+        </div>
+        <div class="candidates-header-actions">
+          <button
+            type="button"
+            id="toggle-candidates-btn"
+            class="secondary-btn candidates-toggle-btn"
+            aria-expanded="true"
+            aria-controls="candidates-collapsible-body"
+          >
+            <span id="toggle-candidates-label">Zwiń listę wyników</span>
+            <svg
+              class="candidates-chevron"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <button type="button" id="close-candidates-btn" class="secondary-btn">
+            Ukryj całkowicie
+          </button>
+        </div>
+      </div>
+      <div id="candidates-collapsible-body" class="candidates-collapsible-body">
+        <div class="candidates-collapsible-inner">
+          <div id="candidates-notice" class="notice-banner" hidden></div>
+          <div id="candidates-grid" class="candidates-grid" role="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="comparison-section"
+      class="comparison-section"
+      aria-labelledby="comparison-heading"
+      hidden
+    >
+      <div class="manifest-summary-bar">
+        <div class="manifest-identity">
+          <div class="manifest-product-frame">
+            <img
+              id="active-product-image"
+              class="manifest-product-thumb"
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              alt="Zdjęcie porównywanego produktu"
+              width="76"
+              height="98"
+              fetchpriority="high"
+            >
+          </div>
+          <div class="manifest-identity-copy">
+            <div class="asin-stamp-row">
+              <span class="asin-stamp" id="active-asin-badge">ASIN: —</span>
+              <span class="origin-stamp" id="active-origin-badge">Źródło: amazon.pl</span>
+              <span class="timestamp-stamp" id="active-timestamp-badge">Aktualizacja: —</span>
+            </div>
+            <h2 id="comparison-heading">Wybierz lub wyszukaj produkt powyżej</h2>
+          </div>
+        </div>
+
+        <div class="manifest-verdict" id="manifest-verdict-box">
+          <div class="verdict-cell verdict-winner">
+            <span class="verdict-label">Najniższa cena z dostawą (Landed PLN)</span>
+            <strong class="verdict-value" id="verdict-best-price">Pobieranie…</strong>
+            <span class="verdict-sub" id="verdict-best-store">Trwa odczyt 9 rynków Amazon</span>
+          </div>
+          <div class="verdict-cell">
+            <span class="verdict-label">Najtańszy sam produkt (bez wysyłki)</span>
+            <strong class="verdict-value" id="verdict-best-item">Pobieranie…</strong>
+            <span class="verdict-sub" id="verdict-best-item-store">Trwa odczyt 9 rynków Amazon</span>
+          </div>
+          <div class="verdict-cell">
+            <span class="verdict-label">Bilans względem amazon.pl</span>
+            <strong class="verdict-value" id="verdict-pl-delta">Trwa porównywanie…</strong>
+            <span class="verdict-sub" id="verdict-pl-sub">Wyniki pojawiają się na żywo poniżej</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-toolbar">
+        <div class="sort-controls" role="group" aria-label="Sortowanie tabeli porównawczej">
+          <span class="toolbar-label">Sortuj wiersze:</span>
+          <button type="button" class="sort-btn is-active" data-sort="landed">
+            Cena z dostawą (PLN) ↑
+          </button>
+          <button type="button" class="sort-btn" data-sort="item">
+            Sam produkt (PLN) ↑
+          </button>
+          <button type="button" class="sort-btn" data-sort="country">
+            Kraj (A–Z)
+          </button>
+        </div>
+
+        <div class="toolbar-actions">
+          <span class="inline-edit-hint">
+            Wskazówka: kliknij dowolne pole ceny lub dostawy w tabeli, aby wpisać własną wartość i przeliczyć ranking na żywo.
+          </span>
+          <button type="button" id="reset-overrides-btn" class="secondary-btn" hidden>
+            Resetuj ręczne korekty
+          </button>
+        </div>
+      </div>
+
+      <div
+        tabindex="0"
+        role="region"
+        aria-labelledby="comparison-table-caption"
+        class="table-wrapper"
+      >
+        <table class="comparison-table" id="comparison-table">
+          <caption id="comparison-table-caption" class="visually-hidden">
+            Porównanie cen produktu oraz kosztów dostawy do Polski w 9 europejskich sklepach Amazon przeliczone na PLN
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Sklep Amazon / Region</th>
+              <th scope="col" class="num-col">Cena produktu (Waluta)</th>
+              <th scope="col" class="num-col">Cena produktu (PLN)</th>
+              <th scope="col" class="num-col">Dostawa do PL (Waluta / PLN)</th>
+              <th scope="col" class="num-col">Razem z dostawą (PLN)</th>
+              <th scope="col" class="num-col">Różnica vs #1 / vs PL</th>
+              <th scope="col" class="action-col">Bezpośredni link</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-tbody">
+            <!-- Wypełniane dynamicznie przez app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ledger-footer">
+    <div class="footer-inner">
+      <p>
+        <strong>EuroAmazon Dispatch</strong> — obsługiwane rynki:
+        <code>amazon.pl</code> · <code>amazon.de</code> · <code>amazon.es</code> · <code>amazon.it</code> ·
+        <code>amazon.fr</code> · <code>amazon.nl</code> · <code>amazon.com.be</code> · <code>amazon.se</code> ·
+        <code>amazon.co.uk</code>.
+      </p>
+      <p>
+        Kursy walut pobierane z API Narodowego Banku Polskiego (Tabela A). Identyfikacja produktów przez wspólny europejski kod katalogowy <code>ASIN</code>.
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

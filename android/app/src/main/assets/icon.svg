@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="48" fill="#14161b"/>
+  <rect x="18" y="18" width="220" height="220" rx="34" fill="#1c2029" stroke="#bf4520" stroke-width="6"/>
+  <rect x="38" y="42" width="180" height="40" rx="10" fill="#bf4520"/>
+  <text x="128" y="69" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="800" text-anchor="middle" letter-spacing="1">EU · UK → PLN</text>
+  <rect x="38" y="98" width="180" height="34" rx="6" fill="#eef2f6"/>
+  <rect x="46" y="105" width="34" height="20" rx="4" fill="#1b7f4b"/>
+  <text x="63" y="119" fill="#ffffff" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">PL</text>
+  <rect x="90" y="111" width="70" height="8" rx="4" fill="#14161b"/>
+  <text x="206" y="120" fill="#1b7f4b" font-family="monospace" font-size="15" font-weight="800" text-anchor="end">PLN</text>
+  <rect x="38" y="142" width="180" height="30" rx="6" fill="#282d3a"/>
+  <rect x="46" y="148" width="34" height="18" rx="4" fill="#3a4152"/>
+  <text x="63" y="161" fill="#e2e8f0" font-family="monospace" font-size="12" font-weight="700" text-anchor="middle">DE</text>
+  <rect x="90" y="153" width="56" height="8" rx="4" fill="#94a3b8"/>
+  <text x="206" y="162" fill="#e2e8f0" font-family="monospace" font-size="14" font-weight="700" text-anchor="end">EUR</text>
+  <rect x="38" y="182" width="180" height="30" rx="6" fill="#282d3a"/>
+  <rect x="46" y="188" width="34" height="18" rx="4" fill="#3a4152"/>
+  <text x="63" y="201" fill="#e2e8f0" font-family="monospace" font-size="12" font-weight="700" text-anchor="middle">UK</text>
+  <rect x="90" y="193" width="62" height="8" rx="4" fill="#94a3b8"/>
+  <text x="206" y="202" fill="#e2e8f0" font-family="monospace" font-size="14" font-weight="700" text-anchor="end">GBP</text>
+</svg>

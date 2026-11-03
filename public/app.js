@@ -1,3 +1,11 @@
+import {
+  compareByAsinOnAndroid,
+  fetchExchangeRatesClient,
+  isAndroidStandaloneMode,
+  resolveUserInputClient,
+  searchCandidatesOnAndroid,
+} from './standalone-engine.js';
+
 const state = {
   currentReport: null,
   sortMode: 'landed', // 'landed' | 'item' | 'country'
@@ -1035,7 +1043,42 @@ async function compareSpecificCandidate(
   dom.submitBtn.disabled = true;
   state.manualOverrides.clear();
 
+  const onStreamEvent = (ev) => {
+    handleProgressEvent(ev);
+    if (ev.type === 'comparison_complete' && ev.report) {
+      if (dom.comparisonSection) {
+        dom.comparisonSection.hidden = false;
+      }
+      state.currentReport = ev.report;
+      updateFxBanner(ev.report.exchangeRates);
+      recalculateReportClientSide();
+      const availCount = ev.report.offers.filter(
+        (o) => o.status === 'available' && o.itemPrice !== null,
+      ).length;
+      finishScrapeProgress(
+        `Zakończono odczyt 9 sklepów Amazon dla ASIN ${ev.report.asin} — aktywne oferty BuyBox w ${availCount} z 9 krajów.`,
+      );
+      document
+        .getElementById('comparison-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   try {
+    if (isAndroidStandaloneMode()) {
+      await compareByAsinOnAndroid(
+        asin,
+        {
+          titleHint,
+          imageHint,
+          originDomain,
+          config: getSessionConfig(),
+        },
+        onStreamEvent,
+      );
+      return;
+    }
+
     const response = await fetch('/api/compare-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1053,26 +1096,7 @@ async function compareSpecificCandidate(
       throw new Error(errData.error || 'Błąd porównywania produktu.');
     }
 
-    await consumeNdjsonStream(response, (ev) => {
-      handleProgressEvent(ev);
-      if (ev.type === 'comparison_complete' && ev.report) {
-        if (dom.comparisonSection) {
-          dom.comparisonSection.hidden = false;
-        }
-        state.currentReport = ev.report;
-        updateFxBanner(ev.report.exchangeRates);
-        recalculateReportClientSide();
-        const availCount = ev.report.offers.filter(
-          (o) => o.status === 'available' && o.itemPrice !== null,
-        ).length;
-        finishScrapeProgress(
-          `Zakończono odczyt 9 sklepów Amazon dla ASIN ${ev.report.asin} — aktywne oferty BuyBox w ${availCount} z 9 krajów.`,
-        );
-        document
-          .getElementById('comparison-section')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
+    await consumeNdjsonStream(response, onStreamEvent);
   } catch (err) {
     dom.queryError.textContent =
       err instanceof Error ? err.message : 'Wystąpił błąd komunikacji.';
@@ -1099,7 +1123,55 @@ async function handleResolveSubmit(rawInput) {
   dom.submitBtn.disabled = true;
   state.manualOverrides.clear();
 
+  const onResolveEvent = (ev) => {
+    handleProgressEvent(ev);
+
+    if (ev.type === 'comparison_complete' && ev.report) {
+      dom.candidatesSection.hidden = true;
+      if (dom.comparisonSection) {
+        dom.comparisonSection.hidden = false;
+      }
+      state.currentReport = ev.report;
+      updateFxBanner(ev.report.exchangeRates);
+      recalculateReportClientSide();
+      const availCount = ev.report.offers.filter(
+        (o) => o.status === 'available' && o.itemPrice !== null,
+      ).length;
+      finishScrapeProgress(
+        `Zakończono odczyt 9 sklepów Amazon dla ASIN ${ev.report.asin} — aktywne oferty BuyBox w ${availCount} z 9 krajów.`,
+      );
+    } else if (ev.type === 'candidates_complete' && ev.searchResult) {
+      renderCandidates(ev.resolved.query, ev.searchResult);
+      finishScrapeProgress(
+        `Pobrano ${ev.searchResult.candidates.length} pozycji z katalogu Amazon dla frazy „${ev.resolved.query}”.`,
+      );
+    }
+  };
+
   try {
+    if (isAndroidStandaloneMode()) {
+      const resolved = resolveUserInputClient(trimmed);
+      if (resolved.kind === 'asin') {
+        await compareByAsinOnAndroid(
+          resolved.asin,
+          {
+            originDomain: resolved.sourceDomain,
+            titleHint: resolved.extractedSlug,
+            config: getSessionConfig(),
+          },
+          onResolveEvent,
+        );
+      } else {
+        await searchCandidatesOnAndroid(
+          resolved.query,
+          dom.originSelect.value,
+          getSessionConfig(),
+          onResolveEvent,
+        );
+      }
+      return;
+    }
+
     const response = await fetch('/api/resolve-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1117,30 +1189,7 @@ async function handleResolveSubmit(rawInput) {
       );
     }
 
-    await consumeNdjsonStream(response, (ev) => {
-      handleProgressEvent(ev);
-
-      if (ev.type === 'comparison_complete' && ev.report) {
-        dom.candidatesSection.hidden = true;
-        if (dom.comparisonSection) {
-          dom.comparisonSection.hidden = false;
-        }
-        state.currentReport = ev.report;
-        updateFxBanner(ev.report.exchangeRates);
-        recalculateReportClientSide();
-        const availCount = ev.report.offers.filter(
-          (o) => o.status === 'available' && o.itemPrice !== null,
-        ).length;
-        finishScrapeProgress(
-          `Zakończono odczyt 9 sklepów Amazon dla ASIN ${ev.report.asin} — aktywne oferty BuyBox w ${availCount} z 9 krajów.`,
-        );
-      } else if (ev.type === 'candidates_complete' && ev.searchResult) {
-        renderCandidates(ev.resolved.query, ev.searchResult);
-        finishScrapeProgress(
-          `Pobrano ${ev.searchResult.candidates.length} pozycji z katalogu Amazon dla frazy „${ev.resolved.query}”.`,
-        );
-      }
-    });
+    await consumeNdjsonStream(response, onResolveEvent);
   } catch (err) {
     dom.queryError.textContent =
       err instanceof Error ? err.message : 'Błąd komunikacji z serwerem.';
@@ -1227,18 +1276,36 @@ dom.resetOverridesBtn.addEventListener('click', () => {
   recalculateReportClientSide();
 });
 
+// Allow Android Share Intent (ACTION_SEND) to inject a shared Amazon link or query
+window.__handleExternalSharedInput = (sharedText) => {
+  if (!sharedText || !String(sharedText).trim()) return;
+  const text = String(sharedText).trim();
+  const urlMatch = text.match(/https?:\/\/[^\s]+/i);
+  const queryToRun = urlMatch ? urlMatch[0] : text;
+  dom.queryInput.value = queryToRun;
+  handleResolveSubmit(queryToRun);
+};
+
 // Initial load: fetch live NBP exchange rates without auto-scraping a sample product
 // (unless ?q= query parameter is explicitly provided in the URL)
-fetch('/api/rates')
-  .then((res) => (res.ok ? res.json() : null))
-  .then((data) => {
-    if (data?.exchangeRates) {
-      updateFxBanner(data.exchangeRates);
-    }
-  })
-  .catch(() => {
-    // Keep default NBP fallback rates in inputs if offline
-  });
+if (isAndroidStandaloneMode()) {
+  fetchExchangeRatesClient()
+    .then((exchangeRates) => {
+      if (exchangeRates) updateFxBanner(exchangeRates);
+    })
+    .catch(() => {});
+} else {
+  fetch('/api/rates')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (data?.exchangeRates) {
+        updateFxBanner(data.exchangeRates);
+      }
+    })
+    .catch(() => {
+      // Keep default NBP fallback rates in inputs if offline
+    });
+}
 
 const urlQueryParam = new URLSearchParams(window.location.search).get('q');
 if (urlQueryParam && urlQueryParam.trim()) {

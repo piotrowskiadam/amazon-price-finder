@@ -315,5 +315,15 @@ export function createApp(deps?: AppDependencies) {
     });
   });
 
+  app.get('/standalone-engine.js', async (c) => {
+    const js = await readFile(
+      path.join(publicDir, 'standalone-engine.js'),
+      'utf-8',
+    );
+    return c.text(js, 200, {
+      'Content-Type': 'application/javascript; charset=utf-8',
+    });
+  });
+
   return app;
 }
