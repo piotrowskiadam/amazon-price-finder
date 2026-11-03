@@ -88,24 +88,17 @@ class MainActivity : Activity() {
         }.getOrDefault("1.0.0")
         installedVersion = runCatching { AppVersion.parse(verName) }.getOrElse { AppVersion.parse("1.0.0") }
 
-        val tokenProvider: () -> String? = {
-            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(KEY_GITHUB_TOKEN, null)
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-        }
-
         val verifier = AndroidApkVerifier(applicationContext)
         updates = UpdateRepository(
             directory = File(filesDir, "updates"),
-            source = GitHubReleaseSource(tokenProvider = tokenProvider),
+            source = GitHubReleaseSource(),
             installed = installedVersion,
             onStateChanged = { pushUpdateStateToWebView() }
         )
         apkDownloads = ApkDownloadRepository(
             directory = File(filesDir, "updates/apk"),
             installed = installedVersion,
-            transport = GitHubApkTransport(tokenProvider = tokenProvider),
+            transport = GitHubApkTransport(),
             verifyIdentity = verifier::verify,
             onStateChanged = { pushUpdateStateToWebView() }
         )
@@ -306,14 +299,10 @@ class MainActivity : Activity() {
             dl.busy || dl.phase == DownloadPhase.Ready
         } ?: up.available ?: dl.release
 
-        val hasToken = !getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_GITHUB_TOKEN, null).isNullOrBlank()
-
         return JSONObject().apply {
             put("installedVersion", installedVersion.toString())
             put("repository", AppRelease.Repository)
             put("repositoryUrl", AppRelease.RepositoryUrl)
-            put("hasGithubToken", hasToken)
             put("checking", up.checking)
             put("checkedAt", up.checkedAt)
             put("checkError", up.error ?: JSONObject.NULL)
@@ -417,18 +406,6 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun installUpdate() {
             triggerInstallUpdate()
-        }
-
-        @JavascriptInterface
-        fun saveGithubToken(token: String) {
-            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putString(KEY_GITHUB_TOKEN, token.trim())
-                .apply()
-            pushUpdateStateToWebView()
-            updatePool.execute {
-                updates.check(force = true)
-            }
         }
 
         @JavascriptInterface

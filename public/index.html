@@ -12,6 +12,21 @@
 <body>
   <header class="ledger-topbar" role="banner">
     <div class="topbar-brand">
+      <button
+        type="button"
+        id="drawer-open"
+        class="hamburger-btn"
+        aria-label="Menu i aktualizacje aplikacji"
+        aria-expanded="false"
+        aria-controls="drawer"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <span id="drawer-update-dot" class="drawer-update-dot" hidden aria-hidden="true"></span>
+      </button>
       <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="2" y="3" width="20" height="18" rx="2"></rect>
         <line x1="2" y1="9" x2="22" y2="9"></line>
@@ -424,129 +439,161 @@
         </table>
       </div>
     </section>
+  </main>
 
-    <!-- Sekcja aktualizacji aplikacji Android (wzorowana na kino-charlie-android) -->
-    <section
-      id="android-update-section"
-      class="android-update-section"
-      aria-labelledby="android-update-heading"
-      hidden
-    >
-      <div class="section-bar update-header-bar">
-        <div>
-          <h2 id="android-update-heading">Aktualizacje aplikacji</h2>
-          <p id="android-installed-version" class="section-subtext">
-            Zainstalowana wersja 1.0.0
-          </p>
-        </div>
-        <button
-          type="button"
-          id="check-updates-btn"
-          class="secondary-btn update-check-btn"
-        >
-          Sprawdź aktualizacje
-        </button>
-      </div>
-
-      <div class="update-body">
-        <div id="update-available-box" class="update-available-box" hidden>
-          <div class="update-release-row">
-            <strong id="update-available-title" class="update-available-title">
-              Dostępna wersja —
-            </strong>
-            <a
-              id="update-changelog-link"
-              class="store-outbound-link"
-              href="https://github.com/piotrowskiadam/amazon-price-finder/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Co nowego w tej wersji ↗
-            </a>
+  <!-- Navigation Drawer / Hamburger Menu (modern-web-guidance: navigation-drawer) -->
+  <div class="Drawer" id="drawer" popover="manual">
+    <div class="Drawer-scroller">
+      <aside class="Drawer-sheet" tabindex="-1" aria-labelledby="drawer-title">
+        <div class="drawer-sheet-header">
+          <div class="drawer-brand-lockup">
+            <span class="asin-stamp">MENU SYSTEMOWE</span>
+            <h2 id="drawer-title">EuroAmazon Dispatch</h2>
           </div>
-
-          <div
-            id="update-download-progress-wrap"
-            class="update-progress-wrap"
-            hidden
+          <button
+            type="button"
+            id="drawer-close"
+            class="secondary-btn drawer-close-btn"
+            aria-label="Zamknij menu boczne"
           >
-            <div class="scrape-progress-track">
-              <div
-                id="update-download-progress-fill"
-                class="scrape-progress-fill"
-                style="width: 0%"
-              ></div>
-            </div>
-            <span id="update-download-progress-label" class="section-subtext">
-              Pobieranie aktualizacji… 0%
-            </span>
-          </div>
-
-          <div class="update-action-row">
-            <button
-              type="button"
-              id="download-update-btn"
-              class="primary-dispatch-btn"
-            >
-              Pobierz aktualizację
-            </button>
-            <button
-              type="button"
-              id="install-update-btn"
-              class="primary-dispatch-btn"
-              hidden
-            >
-              Zainstaluj aktualizację
-            </button>
-            <button
-              type="button"
-              id="cancel-update-btn"
-              class="secondary-btn"
-              hidden
-            >
-              Anuluj pobieranie
-            </button>
-          </div>
-          <p id="update-action-hint" class="field-hint">
-            Pobierz plik tutaj, a potem wybierz „Zainstaluj”. Przy pierwszej instalacji Android poprosi o zgodę dla EuroAmazon Dispatch.
-          </p>
+            ✕ Zamknij
+          </button>
         </div>
 
-        <p id="update-status-message" class="update-status-message">
-          Sprawdzamy aktualizacje w repozytorium GitHub Releases…
-        </p>
-        <p id="update-checked-at" class="field-hint" hidden></p>
-        <p id="update-error-message" class="field-error" hidden></p>
-
-        <details class="session-drawer update-token-drawer">
-          <summary>
-            Opcjonalny token GitHub (dla prywatnego repozytorium piotrowskiadam/amazon-price-finder)
-          </summary>
-          <div class="session-drawer-grid">
-            <div class="form-group">
-              <label for="github-token-input">Personal Access Token (Read-Only Contents)</label>
-              <input
-                type="password"
-                id="github-token-input"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="ghp_... lub github_pat_..."
+        <div class="drawer-sheet-content">
+          <!-- Sekcja aktualizacji aplikacji Android (wzorowana na kino-charlie-android) -->
+          <section
+            id="android-update-section"
+            class="android-update-section"
+            aria-labelledby="android-update-heading"
+          >
+            <div class="section-bar update-header-bar">
+              <div>
+                <h3 id="android-update-heading">Aktualizacje aplikacji</h3>
+                <p id="android-installed-version" class="section-subtext">
+                  Zainstalowana wersja 1.0.2
+                </p>
+              </div>
+              <button
+                type="button"
+                id="check-updates-btn"
+                class="secondary-btn update-check-btn"
               >
-              <span id="github-token-status" class="field-hint">
-                Jeśli repozytorium jest prywatne, zapisz token z uprawnieniem odczytu Releases; dla publicznego repozytorium pole może pozostać puste.
-              </span>
-            </div>
-            <div class="form-group submit-field-group">
-              <button type="button" id="save-github-token-btn" class="secondary-btn">
-                Zapisz token i sprawdź
+                Sprawdź aktualizacje
               </button>
             </div>
-          </div>
-        </details>
-      </div>
-    </section>
-  </main>
+
+            <div class="update-body">
+              <div id="update-available-box" class="update-available-box" hidden>
+                <div class="update-release-row">
+                  <strong id="update-available-title" class="update-available-title">
+                    Dostępna wersja —
+                  </strong>
+                  <a
+                    id="update-changelog-link"
+                    class="store-outbound-link"
+                    href="https://github.com/piotrowskiadam/amazon-price-finder/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Co nowego w tej wersji ↗
+                  </a>
+                </div>
+
+                <div
+                  id="update-download-progress-wrap"
+                  class="update-progress-wrap"
+                  hidden
+                >
+                  <div class="scrape-progress-track">
+                    <div
+                      id="update-download-progress-fill"
+                      class="scrape-progress-fill"
+                      style="width: 0%"
+                    ></div>
+                  </div>
+                  <span id="update-download-progress-label" class="section-subtext">
+                    Pobieranie aktualizacji… 0%
+                  </span>
+                </div>
+
+                <div class="update-action-row">
+                  <button
+                    type="button"
+                    id="download-update-btn"
+                    class="primary-dispatch-btn"
+                  >
+                    Pobierz aktualizację
+                  </button>
+                  <button
+                    type="button"
+                    id="install-update-btn"
+                    class="primary-dispatch-btn"
+                    hidden
+                  >
+                    Zainstaluj aktualizację
+                  </button>
+                  <button
+                    type="button"
+                    id="cancel-update-btn"
+                    class="secondary-btn"
+                    hidden
+                  >
+                    Anuluj pobieranie
+                  </button>
+                </div>
+                <p id="update-action-hint" class="field-hint">
+                  Pobierz plik tutaj, a potem wybierz „Zainstaluj”. Przy pierwszej instalacji Android poprosi o zgodę dla EuroAmazon Dispatch.
+                </p>
+              </div>
+
+              <p id="update-status-message" class="update-status-message">
+                Automatyczne aktualizacje z publicznego repozytorium GitHub Releases (bez wymaganego tokenu).
+              </p>
+              <p id="update-checked-at" class="field-hint" hidden></p>
+              <p id="update-error-message" class="field-error" hidden></p>
+            </div>
+          </section>
+
+          <section class="drawer-info-card" aria-labelledby="drawer-markets-heading">
+            <h3 id="drawer-markets-heading">Obsługiwane rynki Amazon (9 krajów)</h3>
+            <p class="field-hint">
+              Jednoczesny odczyt cen produktu oraz wysyłki do Polski z przeliczeniem po kursach NBP Tabela A:
+            </p>
+            <ul class="drawer-market-list">
+              <li><code>amazon.pl</code> — Polska (PLN)</li>
+              <li><code>amazon.de</code> — Niemcy (EUR)</li>
+              <li><code>amazon.es</code> — Hiszpania (EUR)</li>
+              <li><code>amazon.it</code> — Włochy (EUR)</li>
+              <li><code>amazon.fr</code> — Francja (EUR)</li>
+              <li><code>amazon.nl</code> — Holandia (EUR)</li>
+              <li><code>amazon.com.be</code> — Belgia (EUR)</li>
+              <li><code>amazon.se</code> — Szwecja (SEK)</li>
+              <li><code>amazon.co.uk</code> — Wielka Brytania (GBP)</li>
+            </ul>
+            <div class="drawer-links-row">
+              <a
+                href="https://github.com/piotrowskiadam/amazon-price-finder/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="store-outbound-link"
+              >
+                GitHub Releases (APK) ↗
+              </a>
+              <a
+                href="https://github.com/piotrowskiadam/amazon-price-finder"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="store-outbound-link"
+              >
+                Kod źródłowy GitHub ↗
+              </a>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </div>
 
   <footer class="ledger-footer">
     <div class="footer-inner">

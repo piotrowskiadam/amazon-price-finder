@@ -4,9 +4,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** The injectable boundary is the public HTTP response, never an internal collaborator. */
 class GitHubReleaseSource(
-    private val tokenProvider: () -> String? = { null },
-    private val readResponse: () -> String = { fetchLatest(tokenProvider()) }
+    private val readResponse: () -> String = { fetchLatest() }
 ) {
     fun latest(): AppRelease {
         val json = JSONObject(readResponse())
@@ -36,13 +36,12 @@ class GitHubReleaseSource(
             version = ver,
             size = apk.getLong("size"),
             sha256 = digest.takeIf { it.matches(Regex("[a-f0-9]{64}")) },
-            assetName = apk.getString("name"),
-            assetApiUrl = apk.optString("url").takeIf { it.startsWith("https://api.github.com/") }
+            assetName = apk.getString("name")
         )
     }
 
     companion object {
-        private fun fetchLatest(token: String?): String {
+        private fun fetchLatest(): String {
             val connection = URL("https://api.github.com/repos/${AppRelease.Repository}/releases/latest")
                 .openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000
@@ -51,13 +50,7 @@ class GitHubReleaseSource(
             connection.setRequestProperty("Accept", "application/vnd.github+json")
             connection.setRequestProperty("X-GitHub-Api-Version", "2026-03-10")
             connection.setRequestProperty("User-Agent", "EuroAmazonDispatch-Android")
-            if (!token.isNullOrBlank()) {
-                connection.setRequestProperty("Authorization", "Bearer ${token.trim()}")
-            }
             try {
-                if (connection.responseCode == 404) {
-                    error("PRIVATE_OR_NO_RELEASE")
-                }
                 check(connection.responseCode == 200) { "Release HTTP ${connection.responseCode}" }
                 return connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             } finally {

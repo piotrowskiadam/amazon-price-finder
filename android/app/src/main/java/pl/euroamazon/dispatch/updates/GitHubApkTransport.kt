@@ -9,19 +9,10 @@ fun interface ApkTransport {
     fun open(release: AppRelease, isCancelled: () -> Boolean): InputStream
 }
 
-class GitHubApkTransport(
-    private val tokenProvider: () -> String? = { null }
-) : ApkTransport {
+class GitHubApkTransport : ApkTransport {
     override fun open(release: AppRelease, isCancelled: () -> Boolean): InputStream {
-        val token = tokenProvider()?.trim()?.takeIf { it.isNotEmpty() }
-        val startUrlString = if (token != null && !release.assetApiUrl.isNullOrBlank()) {
-            release.assetApiUrl
-        } else {
-            release.downloadUrl
-        }
-
-        var url = URL(startUrlString)
-        repeat(5) { step ->
+        var url = URL(release.downloadUrl)
+        repeat(5) {
             if (isCancelled()) throw InterruptedException("Anulowano pobieranie")
             require(
                 url.protocol == "https" &&
@@ -29,7 +20,6 @@ class GitHubApkTransport(
                     url.port in listOf(-1, 443) &&
                     url.host in setOf(
                         "github.com",
-                        "api.github.com",
                         "release-assets.githubusercontent.com",
                         "objects.githubusercontent.com"
                     )
@@ -43,12 +33,6 @@ class GitHubApkTransport(
             connection.readTimeout = 10_000
             connection.setRequestProperty("User-Agent", "EuroAmazonDispatch-Android")
             connection.setRequestProperty("Accept-Encoding", "identity")
-            if (url.host == "api.github.com") {
-                connection.setRequestProperty("Accept", "application/octet-stream")
-                if (token != null && step == 0) {
-                    connection.setRequestProperty("Authorization", "Bearer $token")
-                }
-            }
 
             try {
                 when (connection.responseCode) {

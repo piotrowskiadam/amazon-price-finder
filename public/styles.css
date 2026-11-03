@@ -1542,12 +1542,12 @@ code {
     justify-content: space-between;
     padding: 0.2rem 0.3rem;
     gap: 0.2rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .fx-pair {
     white-space: nowrap;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
   }
 
   .fx-rate-chip input {
@@ -1789,7 +1789,171 @@ code {
   border-style: dashed;
 }
 
-/* Android App Self-Update Section (kino-charlie-android pattern) */
+/* Hamburger Trigger Button & Top-Layer Navigation Drawer (modern-web-guidance: navigation-drawer) */
+.hamburger-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 140ms ease-out, color 140ms ease-out;
+}
+
+.hamburger-btn:hover {
+  background: var(--ink-primary);
+  color: #ffffff;
+}
+
+.drawer-update-dot {
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-vermilion);
+  border: 2px solid var(--bg-panel);
+}
+
+.drawer-update-dot[hidden] {
+  display: none !important;
+}
+
+.Drawer {
+  --drawer-width: min(88vw, 410px);
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.Drawer:popover-open {
+  background: rgba(20, 25, 35, 0.45);
+}
+
+.Drawer-scroller {
+  display: grid;
+  grid-template-columns: var(--drawer-width) 100%;
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+
+.Drawer-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.Drawer-sheet {
+  height: 100svh;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
+  border-inline-end: 2px solid var(--rule-strong);
+  box-shadow: var(--shadow-elevated);
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+}
+
+.Drawer:not(:popover-open) .Drawer-sheet {
+  scroll-initial-target: nearest;
+}
+
+.Drawer-scroller::after {
+  content: "";
+  scroll-snap-align: start;
+}
+
+.Drawer:popover-open .Drawer-scroller::after {
+  scroll-initial-target: nearest;
+}
+
+@supports (animation-timeline: scroll()) {
+  @property --drawer-backdrop {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+
+  @keyframes fade-drawer-backdrop {
+    from {
+      --drawer-backdrop: 1;
+    }
+    to {
+      --drawer-backdrop: 0;
+    }
+  }
+
+  .Drawer:popover-open {
+    timeline-scope: --drawer-fade;
+    background: rgba(20, 25, 35, calc(var(--drawer-backdrop, 1) * 0.48));
+    animation: fade-drawer-backdrop linear both;
+    animation-timeline: --drawer-fade;
+  }
+
+  .Drawer-scroller {
+    scroll-timeline: --drawer-fade x;
+  }
+}
+
+.drawer-sheet-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--bg-panel);
+  border-block-end: 1.5px solid var(--rule-strong);
+  padding-block: max(0.85rem, env(safe-area-inset-top)) 0.85rem;
+  padding-inline: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.drawer-brand-lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.drawer-brand-lockup h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.drawer-close-btn {
+  min-height: 38px;
+  padding: 0.35rem 0.7rem;
+  flex-shrink: 0;
+}
+
+.drawer-sheet-content {
+  padding: 1.1rem;
+  padding-block-end: max(1.5rem, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* Android App Self-Update Section inside Hamburger Drawer (kino-charlie-android pattern) */
 .android-update-section {
   background: var(--bg-surface);
   border: 1.5px solid var(--rule-strong);
@@ -1798,8 +1962,14 @@ code {
   overflow: hidden;
 }
 
+.update-header-bar h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .update-body {
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1809,7 +1979,7 @@ code {
   background: var(--bg-surface-hover);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius-sm);
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 0.95rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1820,7 +1990,7 @@ code {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
 .update-available-title {
@@ -1839,7 +2009,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .update-status-message {
@@ -1849,10 +2019,36 @@ code {
   color: var(--ink-primary);
 }
 
-.update-token-drawer {
-  margin-block-start: 0.25rem;
+.drawer-info-card {
+  background: var(--bg-surface);
   border: 1px solid var(--rule-cell);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.drawer-info-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.drawer-market-list {
+  margin: 0;
+  padding-inline-start: 1.15rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+.drawer-links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-start: 0.25rem;
 }
 
 /* Footer */

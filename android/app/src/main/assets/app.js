@@ -67,6 +67,13 @@ const dom = {
   comparisonTbody: document.getElementById('comparison-tbody'),
   resetOverridesBtn: document.getElementById('reset-overrides-btn'),
 
+  drawer: document.getElementById('drawer'),
+  drawerScroller: document.querySelector('#drawer .Drawer-scroller'),
+  drawerSheet: document.querySelector('#drawer .Drawer-sheet'),
+  drawerOpenBtn: document.getElementById('drawer-open'),
+  drawerCloseBtn: document.getElementById('drawer-close'),
+  drawerUpdateDot: document.getElementById('drawer-update-dot'),
+
   androidUpdateSection: document.getElementById('android-update-section'),
   androidInstalledVersion: document.getElementById('android-installed-version'),
   checkUpdatesBtn: document.getElementById('check-updates-btn'),
@@ -85,9 +92,6 @@ const dom = {
   updateStatusMessage: document.getElementById('update-status-message'),
   updateCheckedAt: document.getElementById('update-checked-at'),
   updateErrorMessage: document.getElementById('update-error-message'),
-  githubTokenInput: document.getElementById('github-token-input'),
-  githubTokenStatus: document.getElementById('github-token-status'),
-  saveGithubTokenBtn: document.getElementById('save-github-token-btn'),
 };
 
 function formatPln(amount) {
@@ -1308,18 +1312,89 @@ window.__handleExternalSharedInput = (sharedText) => {
   handleResolveSubmit(queryToRun);
 };
 
+// Top-Layer Navigation Drawer / Hamburger Menu (modern-web-guidance: navigation-drawer)
+function openDrawer() {
+  if (!dom.drawer || !dom.drawerScroller || !dom.drawerSheet) return;
+  dom.drawer.showPopover();
+  if (!CSS.supports('scroll-initial-target', 'nearest')) {
+    dom.drawerScroller.scrollLeft = dom.drawerSheet.offsetWidth;
+  }
+  dom.drawerScroller.scrollTo({ left: 0, behavior: 'smooth' });
+  dom.drawerSheet.focus();
+}
+
+function closeDrawer() {
+  if (!dom.drawer || !dom.drawerScroller || !dom.drawerSheet) return;
+  if (!dom.drawer.matches(':popover-open')) return;
+  dom.drawerScroller.scrollTo({
+    left: dom.drawerSheet.offsetWidth,
+    behavior: 'smooth',
+  });
+  dom.drawerOpenBtn?.focus();
+}
+
+if (dom.drawer && dom.drawerScroller && dom.drawerSheet) {
+  dom.drawerOpenBtn?.addEventListener('click', openDrawer);
+  dom.drawerCloseBtn?.addEventListener('click', closeDrawer);
+
+  // Sync open state as drawer scrolls in and out of view
+  const drawerObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const isVisible = entry.isIntersecting;
+        const mainEl = document.querySelector('main');
+        if (mainEl) {
+          mainEl.inert = isVisible;
+        }
+        dom.drawerOpenBtn?.setAttribute('aria-expanded', String(isVisible));
+        if (!isVisible && dom.drawer.matches(':popover-open')) {
+          dom.drawer.hidePopover();
+        }
+      }
+    },
+    { root: dom.drawerScroller, threshold: 0.01 },
+  );
+  drawerObserver.observe(dom.drawerSheet);
+
+  // Light dismiss (click outside sheet on backdrop)
+  dom.drawer.addEventListener('click', (e) => {
+    if (!dom.drawerSheet.contains(e.target)) {
+      closeDrawer();
+    }
+  });
+
+  // Escape to close
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dom.drawer.matches(':popover-open')) {
+      closeDrawer();
+    }
+  });
+
+  // Fallback for browsers without CSS scroll-driven animations
+  if (!CSS.supports('animation-timeline: scroll()')) {
+    dom.drawerScroller.addEventListener(
+      'scroll',
+      () => {
+        const progress =
+          1 - dom.drawerScroller.scrollLeft / dom.drawerSheet.offsetWidth;
+        dom.drawer.style.backgroundColor = `rgba(20, 25, 35, ${Math.max(0, progress) * 0.48})`;
+      },
+      { passive: true },
+    );
+  }
+}
+
 // Android Self-Update UI synchronization (kino-charlie-android architecture)
 window.__onAndroidUpdateState = (snap) => {
   if (!snap || !dom.androidUpdateSection) return;
   dom.androidUpdateSection.hidden = false;
 
   if (dom.androidInstalledVersion) {
-    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.0'}`;
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.2'}`;
   }
 
-  if (dom.githubTokenStatus && snap.hasGithubToken) {
-    dom.githubTokenStatus.textContent =
-      'Token GitHub jest zapisany w pamięci aplikacji.';
+  if (dom.drawerUpdateDot) {
+    dom.drawerUpdateDot.hidden = !snap.releaseVersion;
   }
 
   const busy =
@@ -1418,8 +1493,43 @@ window.__onAndroidUpdateState = (snap) => {
   }
 };
 
-dom.checkUpdatesBtn?.addEventListener('click', () => {
-  window.EuroAmazonAndroid?.checkUpdates?.();
+dom.checkUpdatesBtn?.addEventListener('click', async () => {
+  if (window.EuroAmazonAndroid?.checkUpdates) {
+    window.EuroAmazonAndroid.checkUpdates();
+    return;
+  }
+  // Fallback check via public GitHub Releases API when opened in desktop/browser
+  if (dom.checkUpdatesBtn) dom.checkUpdatesBtn.disabled = true;
+  if (dom.updateStatusMessage) {
+    dom.updateStatusMessage.textContent = 'Sprawdzamy aktualizacje w GitHub Releases…';
+    dom.updateStatusMessage.hidden = false;
+  }
+  if (dom.updateErrorMessage) dom.updateErrorMessage.hidden = true;
+  try {
+    const res = await fetch(
+      'https://api.github.com/repos/piotrowskiadam/amazon-price-finder/releases/latest',
+      { headers: { Accept: 'application/vnd.github+json' } },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const latestTag = String(data.tag_name || '').replace(/^[vV]/, '');
+    if (dom.updateStatusMessage) {
+      dom.updateStatusMessage.textContent = latestTag
+        ? `Najnowsze wydanie w GitHub Releases: v${latestTag}`
+        : 'Masz aktualną wersję aplikacji.';
+    }
+    if (dom.updateCheckedAt) {
+      dom.updateCheckedAt.textContent = `Sprawdzono ${new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
+      dom.updateCheckedAt.hidden = false;
+    }
+  } catch {
+    if (dom.updateErrorMessage) {
+      dom.updateErrorMessage.textContent = 'Nie udało się sprawdzić aktualizacji.';
+      dom.updateErrorMessage.hidden = false;
+    }
+  } finally {
+    if (dom.checkUpdatesBtn) dom.checkUpdatesBtn.disabled = false;
+  }
 });
 
 dom.downloadUpdateBtn?.addEventListener('click', () => {
@@ -1434,18 +1544,9 @@ dom.installUpdateBtn?.addEventListener('click', () => {
   window.EuroAmazonAndroid?.installUpdate?.();
 });
 
-dom.saveGithubTokenBtn?.addEventListener('click', () => {
-  const token = dom.githubTokenInput?.value?.trim() || '';
-  window.EuroAmazonAndroid?.saveGithubToken?.(token);
-  if (dom.githubTokenInput) dom.githubTokenInput.value = '';
-});
-
 // Initial load: fetch live NBP exchange rates without auto-scraping a sample product
 // (unless ?q= query parameter is explicitly provided in the URL)
 if (isAndroidStandaloneMode()) {
-  if (dom.androidUpdateSection) {
-    dom.androidUpdateSection.hidden = false;
-  }
   window.EuroAmazonAndroid?.requestUpdateSnapshot?.();
   fetchExchangeRatesClient()
     .then((exchangeRates) => {

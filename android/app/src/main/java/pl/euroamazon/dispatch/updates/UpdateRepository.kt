@@ -62,13 +62,8 @@ class UpdateRepository(
                     next = next.copy(error = "Sprawdzono aktualizacje, ale nie udało się zapisać wyniku na telefonie.")
                 }
                 updateState(next)
-            } catch (e: Exception) {
-                val msg = if (e.message?.contains("PRIVATE_OR_NO_RELEASE") == true) {
-                    "Repozytorium GitHub jest prywatne — podaj opcjonalny token odczytu GitHub poniżej lub ustaw repozytorium jako publiczne."
-                } else {
-                    "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później."
-                }
-                updateState(state.copy(error = msg))
+            } catch (_: Exception) {
+                updateState(state.copy(error = "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później."))
             }
         } finally {
             updateState(state.copy(checking = false))
