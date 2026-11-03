@@ -586,6 +586,195 @@ export function parseProductPageHtml(
   };
 }
 
+export interface ParsedAodOfferSummary {
+  itemPrice: number;
+  shippingQuote: number | null;
+  shippingNote: string;
+  shipsToPoland: boolean | null;
+  sellerName: string | null;
+  offerCount: number;
+}
+
+/**
+ * Parses Amazon's All Offers Display (AOD) AJAX HTML
+ * (/gp/product/ajax/aodAjaxMain/ref=dp_aod_unknown_mbc?asin=...&pc=dp)
+ * and selects the lowest-total-price third-party Marketplace offer.
+ */
+export function parseAodOffersHtml(
+  aodHtml: string,
+  marketplace: Marketplace,
+): ParsedAodOfferSummary | null {
+  if (!aodHtml || aodHtml.length < 200) return null;
+  const $ = cheerio.load(aodHtml);
+
+  const candidates: Array<{
+    itemPrice: number;
+    shippingQuote: number | null;
+    shippingDetail: string;
+    shipsToPoland: boolean | null;
+    sellerName: string | null;
+  }> = [];
+
+  $('#aod-pinned-offer, #aod-offer-list #aod-offer, .aod-offer').each((_, el) => {
+    const rawPriceText = $(el)
+      .find('.a-price .a-offscreen, .aok-offscreen')
+      .first()
+      .text()
+      .trim();
+
+    let itemPrice: number | null = null;
+    const parsedPrice = parseLocalizedMoney(rawPriceText);
+    if (parsedPrice !== null && parsedPrice > 0) {
+      const detectedCurr = detectCurrencyInRawText(rawPriceText, marketplace.currency);
+      itemPrice = normalizeAmountToMarketplaceCurrency(
+        parsedPrice,
+        detectedCurr,
+        marketplace.currency,
+      );
+    } else {
+      const whole = $(el).find('.a-price-whole').first().text().replace(/[^\d]/g, '');
+      const frac = $(el).find('.a-price-fraction').first().text().replace(/[^\d]/g, '');
+      const sym = $(el).find('.a-price-symbol').first().text().trim();
+      if (whole) {
+        const val = Number.parseFloat(`${whole}.${frac || '00'}`);
+        if (Number.isFinite(val) && val > 0) {
+          const detectedCurr = detectCurrencyInRawText(sym, marketplace.currency);
+          itemPrice = normalizeAmountToMarketplaceCurrency(
+            val,
+            detectedCurr,
+            marketplace.currency,
+          );
+        }
+      }
+    }
+
+    if (itemPrice === null || itemPrice <= 0) return;
+
+    const csaDeliveryAttr = $(el)
+      .find('[data-csa-c-delivery-price]')
+      .first()
+      .attr('data-csa-c-delivery-price');
+    const deliveryBlockText = $(el)
+      .find('#mir-layout-DELIVERY_BLOCK, #deliveryBlockMessage')
+      .text()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    let shippingQuote: number | null = null;
+    let shipsToPoland: boolean | null = null;
+    let shippingDetail = 'Dostawa wg koszyka';
+
+    if (NO_SHIPPING_TO_DEST_PATTERNS.some((rx) => rx.test(deliveryBlockText))) {
+      shipsToPoland = false;
+      shippingDetail = 'Brak wysyłki do PL';
+    } else if (csaDeliveryAttr) {
+      const lowerAttr = csaDeliveryAttr.toLowerCase();
+      if (
+        lowerAttr === 'free' ||
+        lowerAttr === 'gratis' ||
+        lowerAttr === 'darmowa' ||
+        lowerAttr === 'kostenlos' ||
+        lowerAttr === 'gratuite' ||
+        lowerAttr === 'gratuita' ||
+        FREE_SHIPPING_WORDS.some((w) => lowerAttr.includes(w))
+      ) {
+        shippingQuote = 0;
+        shipsToPoland = true;
+        shippingDetail = 'Darmowa dostawa';
+      } else {
+        const parsedShip = parseLocalizedMoney(csaDeliveryAttr);
+        if (parsedShip !== null) {
+          const detectedCurr = detectCurrencyInRawText(
+            csaDeliveryAttr,
+            marketplace.currency,
+          );
+          shippingQuote = normalizeAmountToMarketplaceCurrency(
+            parsedShip,
+            detectedCurr,
+            marketplace.currency,
+          );
+          shipsToPoland = true;
+          shippingDetail = `Dostawa: ${csaDeliveryAttr.trim()}`;
+        }
+      }
+    }
+
+    if (shippingQuote === null && shipsToPoland !== false && deliveryBlockText) {
+      const lowerText = deliveryBlockText.toLowerCase();
+      if (FREE_SHIPPING_WORDS.some((w) => lowerText.includes(w))) {
+        shippingQuote = 0;
+        shipsToPoland = true;
+        shippingDetail = 'Darmowa dostawa';
+      } else {
+        const parsedFromBlock = parseLocalizedMoney(deliveryBlockText);
+        if (parsedFromBlock !== null) {
+          const detectedCurr = detectCurrencyInRawText(
+            deliveryBlockText,
+            marketplace.currency,
+          );
+          shippingQuote = normalizeAmountToMarketplaceCurrency(
+            parsedFromBlock,
+            detectedCurr,
+            marketplace.currency,
+          );
+          shipsToPoland = true;
+          shippingDetail = deliveryBlockText.slice(0, 55);
+        }
+      }
+    }
+
+    const sellerName =
+      $(el)
+        .find('#aod-offer-soldBy a.a-link-normal, #aod-offer-soldBy span.a-color-base')
+        .first()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim() ||
+      $(el)
+        .find('#aod-offer-shipsFrom span.a-color-base')
+        .last()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim() ||
+      null;
+
+    candidates.push({
+      itemPrice,
+      shippingQuote,
+      shippingDetail,
+      shipsToPoland,
+      sellerName,
+    });
+  });
+
+  if (candidates.length === 0) return null;
+
+  const shippable = candidates.filter((c) => c.shipsToPoland !== false);
+  const pool = shippable.length > 0 ? shippable : candidates;
+
+  pool.sort((a, b) => {
+    const totalA = a.itemPrice + (a.shippingQuote ?? 0);
+    const totalB = b.itemPrice + (b.shippingQuote ?? 0);
+    return totalA - totalB;
+  });
+
+  const best = pool[0]!;
+  const sellerLabel = best.sellerName
+    ? `Marketplace: ${best.sellerName}`
+    : 'Oferta Marketplace';
+  const countLabel =
+    candidates.length > 1 ? ` (najtańsza z ${candidates.length} ofert)` : '';
+
+  return {
+    itemPrice: best.itemPrice,
+    shippingQuote: best.shippingQuote,
+    shippingNote: `${sellerLabel}${countLabel} · ${best.shippingDetail}`,
+    shipsToPoland: best.shipsToPoland,
+    sellerName: best.sellerName ? `${best.sellerName} (Marketplace)` : 'Marketplace',
+    offerCount: candidates.length,
+  };
+}
+
 export function parseSearchResultsHtml(
   html: string,
   marketplaceId: MarketplaceId,

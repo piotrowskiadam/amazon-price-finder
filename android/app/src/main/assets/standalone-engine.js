@@ -864,6 +864,187 @@ function parseProductDom(html, marketplace, asin, responseTimeMs) {
   };
 }
 
+function parseAodOffersDom(aodHtml, marketplace) {
+  if (!aodHtml || aodHtml.length < 200) return null;
+  const doc = new DOMParser().parseFromString(aodHtml, 'text/html');
+  const offerEls = doc.querySelectorAll(
+    '#aod-pinned-offer, #aod-offer-list #aod-offer, .aod-offer',
+  );
+  const candidates = [];
+
+  for (const el of offerEls) {
+    const rawPriceText = (
+      el.querySelector('.a-price .a-offscreen, .aok-offscreen')?.textContent || ''
+    ).trim();
+
+    let itemPrice = null;
+    const parsedPrice = parseLocalizedMoney(rawPriceText);
+    if (parsedPrice !== null && parsedPrice > 0) {
+      const detectedCurr = detectCurrencyInRawText(
+        rawPriceText,
+        marketplace.currency,
+      );
+      itemPrice = normalizeAmountToMarketplaceCurrency(
+        parsedPrice,
+        detectedCurr,
+        marketplace.currency,
+      );
+    } else {
+      const whole = (
+        el.querySelector('.a-price-whole')?.textContent || ''
+      ).replace(/[^\d]/g, '');
+      const frac = (
+        el.querySelector('.a-price-fraction')?.textContent || ''
+      ).replace(/[^\d]/g, '');
+      const sym = (
+        el.querySelector('.a-price-symbol')?.textContent || ''
+      ).trim();
+      if (whole) {
+        const val = Number.parseFloat(`${whole}.${frac || '00'}`);
+        if (Number.isFinite(val) && val > 0) {
+          const detectedCurr = detectCurrencyInRawText(
+            sym,
+            marketplace.currency,
+          );
+          itemPrice = normalizeAmountToMarketplaceCurrency(
+            val,
+            detectedCurr,
+            marketplace.currency,
+          );
+        }
+      }
+    }
+
+    if (itemPrice === null || itemPrice <= 0) continue;
+
+    const csaDeliveryAttr = el
+      .querySelector('[data-csa-c-delivery-price]')
+      ?.getAttribute('data-csa-c-delivery-price');
+    const deliveryBlockText = (
+      el.querySelector('#mir-layout-DELIVERY_BLOCK, #deliveryBlockMessage')
+        ?.textContent || ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    let shippingQuote = null;
+    let shipsToPoland = null;
+    let shippingDetail = 'Dostawa wg koszyka';
+
+    if (NO_SHIPPING_TO_DEST_PATTERNS.some((rx) => rx.test(deliveryBlockText))) {
+      shipsToPoland = false;
+      shippingDetail = 'Brak wysyłki do PL';
+    } else if (csaDeliveryAttr) {
+      const lowerAttr = csaDeliveryAttr.toLowerCase();
+      if (
+        lowerAttr === 'free' ||
+        lowerAttr === 'gratis' ||
+        lowerAttr === 'darmowa' ||
+        lowerAttr === 'kostenlos' ||
+        lowerAttr === 'gratuite' ||
+        lowerAttr === 'gratuita' ||
+        FREE_SHIPPING_WORDS.some((w) => lowerAttr.includes(w))
+      ) {
+        shippingQuote = 0;
+        shipsToPoland = true;
+        shippingDetail = 'Darmowa dostawa';
+      } else {
+        const parsedShip = parseLocalizedMoney(csaDeliveryAttr);
+        if (parsedShip !== null) {
+          const detectedCurr = detectCurrencyInRawText(
+            csaDeliveryAttr,
+            marketplace.currency,
+          );
+          shippingQuote = normalizeAmountToMarketplaceCurrency(
+            parsedShip,
+            detectedCurr,
+            marketplace.currency,
+          );
+          shipsToPoland = true;
+          shippingDetail = `Dostawa: ${csaDeliveryAttr.trim()}`;
+        }
+      }
+    }
+
+    if (shippingQuote === null && shipsToPoland !== false && deliveryBlockText) {
+      const lowerText = deliveryBlockText.toLowerCase();
+      if (FREE_SHIPPING_WORDS.some((w) => lowerText.includes(w))) {
+        shippingQuote = 0;
+        shipsToPoland = true;
+        shippingDetail = 'Darmowa dostawa';
+      } else {
+        const parsedFromBlock = parseLocalizedMoney(deliveryBlockText);
+        if (parsedFromBlock !== null) {
+          const detectedCurr = detectCurrencyInRawText(
+            deliveryBlockText,
+            marketplace.currency,
+          );
+          shippingQuote = normalizeAmountToMarketplaceCurrency(
+            parsedFromBlock,
+            detectedCurr,
+            marketplace.currency,
+          );
+          shipsToPoland = true;
+          shippingDetail = deliveryBlockText.slice(0, 55);
+        }
+      }
+    }
+
+    const sellerName =
+      (
+        el.querySelector(
+          '#aod-offer-soldBy a.a-link-normal, #aod-offer-soldBy span.a-color-base',
+        )?.textContent || ''
+      )
+        .replace(/\s+/g, ' ')
+        .trim() ||
+      (
+        el.querySelector('#aod-offer-shipsFrom span.a-color-base')
+          ?.textContent || ''
+      )
+        .replace(/\s+/g, ' ')
+        .trim() ||
+      null;
+
+    candidates.push({
+      itemPrice,
+      shippingQuote,
+      shippingDetail,
+      shipsToPoland,
+      sellerName,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+
+  const shippable = candidates.filter((c) => c.shipsToPoland !== false);
+  const pool = shippable.length > 0 ? shippable : candidates;
+
+  pool.sort((a, b) => {
+    const totalA = a.itemPrice + (a.shippingQuote ?? 0);
+    const totalB = b.itemPrice + (b.shippingQuote ?? 0);
+    return totalA - totalB;
+  });
+
+  const best = pool[0];
+  const sellerLabel = best.sellerName
+    ? `Marketplace: ${best.sellerName}`
+    : 'Oferta Marketplace';
+  const countLabel =
+    candidates.length > 1 ? ` (najtańsza z ${candidates.length} ofert)` : '';
+
+  return {
+    itemPrice: best.itemPrice,
+    shippingQuote: best.shippingQuote,
+    shippingNote: `${sellerLabel}${countLabel} · ${best.shippingDetail}`,
+    shipsToPoland: best.shipsToPoland,
+    sellerName: best.sellerName
+      ? `${best.sellerName} (Marketplace)`
+      : 'Marketplace',
+    offerCount: candidates.length,
+  };
+}
+
 async function fetchSingleStoreOnAndroid(marketplace, asin, config) {
   const productUrl = `https://www.${marketplace.domain}/dp/${asin}?th=1&psc=1`;
   const startedAt = Date.now();
@@ -933,12 +1114,51 @@ async function fetchSingleStoreOnAndroid(marketplace, asin, config) {
       };
     }
 
+    const htmlBody = res.body || '';
     const parsed = parseProductDom(
-      res.body || '',
+      htmlBody,
       marketplace,
       asin,
       responseTimeMs,
     );
+
+    const hasAodDrawerInHtml =
+      htmlBody.includes('all-offers-display-params') ||
+      htmlBody.includes('buybox-see-all-buying-choices') ||
+      htmlBody.includes('show-all-offers-display') ||
+      htmlBody.includes('dynamic-aod-ingress-box');
+
+    if (
+      (parsed.status === 'out_of_stock' &&
+        parsed.statusMessage === 'Brak oferty w BuyBox') ||
+      (parsed.status === 'out_of_stock' && hasAodDrawerInHtml)
+    ) {
+      const aodUrl = `https://www.${marketplace.domain}/gp/product/ajax/aodAjaxMain/ref=dp_aod_unknown_mbc?asin=${asin}&pc=dp`;
+      const aodRes = await nativeHttpFetch(
+        aodUrl,
+        marketplace.domain,
+        marketplace.languageTag,
+        config?.cookieHeader || '',
+      );
+      if (aodRes.status >= 200 && aodRes.status < 400 && aodRes.body) {
+        const aodOffer = parseAodOffersDom(aodRes.body, marketplace);
+        if (aodOffer) {
+          return {
+            ...parsed,
+            productUrl: `${productUrl}&aod=1`,
+            status: 'available',
+            itemPrice: aodOffer.itemPrice,
+            shippingQuote: aodOffer.shippingQuote,
+            shippingNote: aodOffer.shippingNote,
+            shipsToPoland: aodOffer.shipsToPoland,
+            sellerName: aodOffer.sellerName,
+            responseTimeMs: Date.now() - startedAt,
+            statusMessage: undefined,
+          };
+        }
+      }
+    }
+
     return {
       ...parsed,
       productUrl,

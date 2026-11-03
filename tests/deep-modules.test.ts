@@ -6,6 +6,7 @@ import { StaticExchangeRateProvider } from '../src/modules/exchange-rate-provide
 import { resolveUserInput } from '../src/modules/input-resolver.js';
 import { FixtureMarketplaceGateway } from '../src/modules/marketplace-gateway.js';
 import {
+  parseAodOffersHtml,
   parseLocalizedMoney,
   parseProductPageHtml,
   parseSearchResultsHtml,
@@ -146,6 +147,37 @@ describe('MarketplaceParser deep module', () => {
     const offer = parseProductPageHtml(dogHtml, MARKETPLACE_BY_ID.SE, 'B077Z3JQMF', 50);
     assert.equal(offer.status, 'not_found');
     assert.equal(offer.itemPrice, null);
+  });
+
+  it('parses third-party Marketplace offers from AOD AJAX HTML and selects lowest landed price', () => {
+    const aodHtml = `
+      <div id="aod-offer-list">
+        <div id="aod-offer">
+          <span class="a-price"><span class="a-offscreen">966,01 zł</span></span>
+          <div id="mir-layout-DELIVERY_BLOCK">
+            <span data-csa-c-delivery-price="92,47 zł">92,47 zł dostawa</span>
+          </div>
+          <div id="aod-offer-soldBy">
+            <a class="a-link-normal" href="/gp/aag/main">VAYATELA</a>
+          </div>
+        </div>
+        <div id="aod-offer">
+          <span class="a-price"><span class="a-offscreen">555,57 zł</span></span>
+          <div id="mir-layout-DELIVERY_BLOCK">
+            <span data-csa-c-delivery-price="150zł">150zł dostawa</span>
+          </div>
+          <div id="aod-offer-soldBy">
+            <a class="a-link-normal" href="/gp/aag/main">MegaMobile</a>
+          </div>
+        </div>
+      </div>
+    `;
+    const parsed = parseAodOffersHtml(aodHtml, MARKETPLACE_BY_ID.PL);
+    assert.ok(parsed);
+    assert.equal(parsed.itemPrice, 555.57);
+    assert.equal(parsed.shippingQuote, 150);
+    assert.equal(parsed.sellerName, 'MegaMobile (Marketplace)');
+    assert.equal(parsed.offerCount, 2);
   });
 });
 

@@ -617,7 +617,12 @@ function renderComparisonReport(report) {
 
     const countryName = document.createElement('span');
     countryName.className = 'store-country-name';
-    countryName.textContent = row.marketplace.countryNamePl;
+    const cleanSeller = row.sellerName
+      ? String(row.sellerName).replace(/\s+/g, ' ').trim().slice(0, 38)
+      : '';
+    countryName.textContent = cleanSeller
+      ? `${row.marketplace.countryNamePl} · ${cleanSeller}`
+      : row.marketplace.countryNamePl;
 
     meta.append(domainRow, countryName);
 
@@ -1390,7 +1395,7 @@ window.__onAndroidUpdateState = (snap) => {
   dom.androidUpdateSection.hidden = false;
 
   if (dom.androidInstalledVersion) {
-    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.2'}`;
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.3'}`;
   }
 
   if (dom.drawerUpdateDot) {

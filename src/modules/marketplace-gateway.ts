@@ -16,6 +16,7 @@ import type {
 import {
   isCaptchaHtml,
   isDogOrErrorPageHtml,
+  parseAodOffersHtml,
   parseProductPageHtml,
   parseSearchResultsHtml,
 } from './marketplace-parser.js';
@@ -344,6 +345,55 @@ export class HttpMarketplaceGateway implements MarketplaceGateway {
           asin,
           responseTimeMs,
         );
+
+        // If the product has no featured BuyBox (or has an AOD marketplace offers drawer)
+        // fetch Amazon's All Offers Display AJAX endpoint (/gp/product/ajax/aodAjaxMain)
+        const hasAodDrawerInHtml =
+          html.includes('all-offers-display-params') ||
+          html.includes('buybox-see-all-buying-choices') ||
+          html.includes('show-all-offers-display') ||
+          html.includes('dynamic-aod-ingress-box');
+
+        if (
+          !this.customFetchImpl &&
+          ((parsed.status === 'out_of_stock' &&
+            parsed.statusMessage === 'Brak oferty w BuyBox') ||
+            (parsed.status === 'out_of_stock' && hasAodDrawerInHtml))
+        ) {
+          try {
+            const aodUrl = `https://www.${marketplace.domain}/gp/product/ajax/aodAjaxMain/ref=dp_aod_unknown_mbc?asin=${asin}&pc=dp`;
+            const aodRes = await this.downloadHtml(
+              aodUrl,
+              {
+                ...headers,
+                Accept: 'text/html,*/*',
+                'X-Requested-With': 'XMLHttpRequest',
+                Referer: productUrl,
+              },
+              marketplace.id,
+            );
+            if (aodRes.status >= 200 && aodRes.status < 400) {
+              const aodOffer = parseAodOffersHtml(aodRes.html, marketplace);
+              if (aodOffer) {
+                return {
+                  ...parsed,
+                  productUrl: `${productUrl}&aod=1`,
+                  status: 'available',
+                  itemPrice: aodOffer.itemPrice,
+                  shippingQuote: aodOffer.shippingQuote,
+                  shippingNote: aodOffer.shippingNote,
+                  shipsToPoland: aodOffer.shipsToPoland,
+                  sellerName: aodOffer.sellerName,
+                  responseTimeMs: Date.now() - startedAt,
+                  statusMessage: undefined,
+                };
+              }
+            }
+          } catch {
+            // Keep original parsed state if AOD fetch fails
+          }
+        }
+
         return {
           ...parsed,
           productUrl,
