@@ -272,7 +272,7 @@ async function nativeHttpFetch(url, domain, acceptLanguage, cookieHeader) {
     )}&cookie=${encodeURIComponent(cookieHeader || '')}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 14000);
+    const timeoutId = setTimeout(() => controller.abort(), 28000);
     const res = await fetch(proxyUrl, {
       method: 'GET',
       cache: 'no-store',
@@ -299,7 +299,7 @@ async function nativeHttpFetch(url, domain, acceptLanguage, cookieHeader) {
         window.EuroAmazonAndroid?.releaseHttpBody?.(reqId);
         resolve({ status: 0, body: '', error: 'Przekroczono czas oczekiwania' });
       }
-    }, 14000);
+    }, 28000);
 
     pendingFetches.set(reqId, {
       resolve: (res) => {
@@ -1374,7 +1374,9 @@ export async function searchCandidatesOnAndroid(
     marketplaceId: marketplace.id,
   });
 
-  const searchUrl = `https://www.${marketplace.domain}/s?k=${encodeURIComponent(query.trim())}`;
+  const searchUrl = `https://www.${marketplace.domain}/s?k=${encodeURIComponent(
+    query.trim(),
+  ).replace(/%20/g, '+')}&ref=nb_sb_noss`;
   const candidates = [];
   const seenAsins = new Set();
 
@@ -1400,10 +1402,11 @@ export async function searchCandidatesOnAndroid(
         }
 
         const imgEl = el.querySelector('img.s-image, img[data-image-latency]');
+        const titleEl = el.querySelector(
+          'h2 span, h2 a, h2, [data-cy="title-recipe"] span, [data-cy="title-recipe"] a, a.a-link-normal.s-line-clamp-4 span, a.a-text-normal span, a.a-link-normal span',
+        );
         const title =
-          (el.querySelector('h2 span')?.textContent || '').trim() ||
-          (el.querySelector('h2 a')?.textContent || '').trim() ||
-          (el.querySelector('h2')?.textContent || '').trim() ||
+          (titleEl?.textContent || '').trim() ||
           (imgEl?.getAttribute('alt') || '')
             .replace(/^Reklama sponsorowana\s*[—–-]\s*/i, '')
             .trim();

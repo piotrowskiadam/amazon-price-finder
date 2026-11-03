@@ -1,6 +1,6 @@
 {
   "name": "amazon-price-finder-eu",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Cross-border European & UK Amazon price & shipping comparison engine in PLN",
   "type": "module",
   "scripts": {

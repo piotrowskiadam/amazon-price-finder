@@ -964,6 +964,13 @@ function renderCandidates(query, searchResult) {
   state.selectedCandidate = null;
   setCandidatesCollapsed(false, null);
 
+  if (count === 0) {
+    if (dom.candidatesHeading) {
+      dom.candidatesHeading.textContent = 'Brak pasujących pozycji w katalogu';
+    }
+    dom.candidatesSubtitle.textContent = `Dla frazy „${query}” nie udało się załadować listy pozycji z Amazon. Sprawdź pisownię lub wklej bezpośredni link / kod ASIN produktu.`;
+  }
+
   if (searchResult.notice) {
     dom.candidatesNotice.textContent = searchResult.notice;
     dom.candidatesNotice.hidden = false;
@@ -1473,7 +1480,7 @@ window.__onAndroidUpdateState = (snap) => {
   dom.androidUpdateSection.hidden = false;
 
   if (dom.androidInstalledVersion) {
-    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.5'}`;
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.6'}`;
   }
 
   if (dom.drawerUpdateDot) {
