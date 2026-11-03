@@ -103,7 +103,7 @@ code {
   font-size: 0.875rem;
   background: var(--bg-panel);
   padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--rule-cell);
 }
 
@@ -145,8 +145,9 @@ code {
   flex-shrink: 0;
 }
 
+.brand-lockup h1,
 .topbar-brand h1 {
-  font-size: 1.125rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0;
@@ -168,10 +169,31 @@ code {
   gap: 0.75rem;
 }
 
-.fx-meta {
-  display: flex;
+.fx-summary-chip {
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: #eef2f6;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.fx-summary-chip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.fx-summary-rate {
+  font-weight: 700;
+  color: #ffffff;
+  padding-inline-start: 0.35rem;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .status-pill {
@@ -181,57 +203,59 @@ code {
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
   padding: 0.15rem 0.5rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .fx-date {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: #cfd4de;
+  color: var(--fg-winner-muted);
 }
 
-.fx-rates-group {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+.drawer-fx-rates-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  margin-block-start: 0.75rem;
 }
 
 .fx-rate-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  background: #252932;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule-cell);
   border-radius: var(--radius-sm);
-  padding: 0.2rem 0.45rem;
+  padding: 0.5rem 0.75rem;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: #e2e6ee;
+  font-size: 0.8125rem;
+  color: var(--ink-primary);
 }
 
 .fx-pair {
-  color: #b8c0ce;
-  font-weight: 500;
+  color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 .fx-rate-chip input {
-  width: 4.4rem;
-  min-height: 26px;
-  padding: 0.1rem 0.25rem;
+  width: 5.5rem;
+  min-height: 32px;
+  padding: 0.2rem 0.4rem;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #ffffff;
-  background: #14161b;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 3px;
+  color: var(--ink-primary);
+  background: var(--bg-stock);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
   text-align: right;
 }
 
 .fx-unit {
-  color: #b8c0ce;
+  color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 .diagram-link {
@@ -289,7 +313,7 @@ code {
 }
 
 .command-header-row h2 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.015em;
   margin: 0;
@@ -466,17 +490,29 @@ code {
 .presets-strip {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 0.5rem;
+  padding-block: 0.25rem;
+  max-width: 100%;
+}
+
+.presets-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .presets-label {
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-secondary);
+  flex-shrink: 0;
 }
 
 .preset-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 0.76rem;
   font-weight: 500;
@@ -546,6 +582,79 @@ code {
   height: 1.1rem;
   margin-block-start: 0.15rem;
   flex-shrink: 0;
+}
+
+/* Mobile Onboarding & Android Share Sheet Guide */
+.mobile-onboarding-card {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-elevated);
+}
+
+.onboarding-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-block-end: 0.85rem;
+}
+
+.onboarding-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-vermilion);
+}
+
+.onboarding-headline {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.onboarding-steps-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  background: var(--bg-stock);
+  border: 1px solid var(--rule-cell);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+}
+
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ink-primary);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.onboarding-step p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ink-secondary);
 }
 
 /* Candidates Disambiguation Section */
@@ -763,7 +872,7 @@ code {
   font-weight: 600;
   background: var(--bg-panel);
   padding: 0.12rem 0.45rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--rule-cell);
 }
 
@@ -883,7 +992,7 @@ code {
   background: var(--ink-primary);
   color: #ffffff;
   padding: 0.18rem 0.55rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   letter-spacing: 0.04em;
 }
 
@@ -895,7 +1004,7 @@ code {
   background: var(--bg-surface);
   border: 1px solid var(--rule-cell);
   padding: 0.15rem 0.5rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .manifest-identity h2 {
@@ -1125,13 +1234,17 @@ code {
   gap: 0.65rem;
 }
 
+.mobile-header-summary {
+  display: none;
+}
+
 .table-row-thumb {
   width: 40px;
   height: 52px;
   object-fit: contain;
   background: #ffffff;
   border: 1px solid var(--rule-cell);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 2px;
   flex-shrink: 0;
 }
@@ -1152,7 +1265,7 @@ code {
   background: var(--bg-panel);
   color: var(--ink-primary);
   border: 1px solid var(--rule-strong);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
@@ -1240,7 +1353,7 @@ code {
   color: var(--ink-primary);
   background: var(--bg-surface-hover);
   border: 1px solid var(--rule-cell);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .is-best-row .inline-money-input {
@@ -1318,7 +1431,7 @@ code {
   font-size: 0.78rem;
   font-weight: 600;
   padding: 0.15rem 0.45rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .delta-best {
@@ -1397,25 +1510,73 @@ code {
   }
 
   .comparison-table tbody tr {
-    margin-block-end: 1rem;
+    margin-block-end: 0.5rem;
     border: 1.5px solid var(--rule-strong);
     border-radius: var(--radius-sm);
     overflow: hidden;
+    background: var(--bg-surface);
   }
 
   .comparison-table tbody th {
-    position: sticky;
-    inset-block-start: 0;
+    position: relative;
     z-index: 2;
     background: var(--bg-panel);
-    border-block-end: 1px solid var(--rule-strong);
+    border-block-end: 1px solid var(--rule-cell);
     border-inline-end: 0;
+    cursor: pointer;
+    padding: 0.65rem 0.85rem;
+    user-select: none;
+  }
+
+  .store-cell-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .mobile-header-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-inline-start: auto;
+  }
+
+  .mobile-header-price {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink-primary);
+  }
+
+  .mobile-chevron {
+    font-size: 0.85rem;
+    color: var(--ink-secondary);
+    transition: transform 140ms ease-out;
   }
 
   .comparison-table tbody tr.is-best-row th {
     background: var(--bg-winner-plate);
     color: var(--fg-winner-plate);
     border-block-end-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .comparison-table tbody tr.is-best-row .mobile-header-price {
+    color: var(--fg-winner-mint);
+  }
+
+  .comparison-table tbody tr.is-best-row .mobile-chevron {
+    color: var(--fg-winner-muted);
+  }
+
+  /* When collapsed on mobile, hide the secondary details */
+  .comparison-table tbody tr.is-collapsed td {
+    display: none !important;
+  }
+
+  .comparison-table tbody tr.is-collapsed th {
+    border-block-end: none;
   }
 
   .comparison-table tbody td {
@@ -1426,8 +1587,13 @@ code {
     text-align: right;
     column-gap: 0.75rem;
     row-gap: 0.22rem;
-    padding: 0.65rem 0.9rem;
+    padding: 0.55rem 0.85rem;
     border-inline-end: 0;
+    border-block-end: 1px solid var(--rule-cell);
+  }
+
+  .comparison-table tbody td:last-child {
+    border-block-end: none;
   }
 
   .comparison-table tbody td::before {
@@ -1518,6 +1684,9 @@ code {
   .ledger-topbar {
     padding-inline: max(0.85rem, env(safe-area-inset-left)) max(0.85rem, env(safe-area-inset-right));
     gap: 0.65rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .brand-subtitle {
@@ -1525,38 +1694,9 @@ code {
   }
 
   .fx-strip {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    justify-content: flex-end;
     gap: 0.5rem;
-  }
-
-  .fx-rates-group {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    gap: 0.3rem;
-  }
-
-  .fx-rate-chip {
-    min-width: 0;
-    justify-content: space-between;
-    padding: 0.2rem 0.3rem;
-    gap: 0.2rem;
-    font-size: 0.75rem;
-  }
-
-  .fx-pair {
-    white-space: nowrap;
-    font-size: 0.75rem;
-  }
-
-  .fx-rate-chip input {
-    width: 100%;
-    min-width: 0;
-    flex: 1;
-    min-height: 28px;
-    padding: 0.1rem 0.2rem;
-    font-size: 0.75rem;
   }
 
   .diagram-link {

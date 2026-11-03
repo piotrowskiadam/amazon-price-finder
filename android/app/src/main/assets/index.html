@@ -34,61 +34,20 @@
         <path d="M13 15h5m0 0-2-2m2 2-2 2"></path>
       </svg>
       <h1>EuroAmazon Dispatch</h1>
-      <span class="brand-subtitle">Manifest cenowy 9 rynków UE i Wielkiej Brytanii → PLN</span>
+      <span class="brand-subtitle">Porównywarka cen w 9 sklepach Amazon w Europie</span>
     </div>
 
     <div class="fx-strip" aria-label="Aktualne kursy walut NBP">
-      <div class="fx-meta">
+      <button
+        type="button"
+        id="fx-summary-btn"
+        class="fx-summary-chip"
+        aria-label="Kursy walut NBP — kliknij, aby otworzyć kalkulator w menu"
+      >
         <span id="fx-source-badge" class="status-pill">NBP Tabela A</span>
         <span id="fx-date-label" class="fx-date">Ładowanie kursów…</span>
-      </div>
-      <div class="fx-rates-group">
-        <label class="fx-rate-chip" for="rate-eur-input">
-          <span class="fx-pair">1 EUR</span>
-          <input
-            type="text"
-            id="rate-eur-input"
-            name="rate_eur"
-            inputmode="decimal"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            value="4.3185"
-            aria-label="Kurs EUR do PLN"
-          >
-          <span class="fx-unit">zł</span>
-        </label>
-        <label class="fx-rate-chip" for="rate-gbp-input">
-          <span class="fx-pair">1 GBP</span>
-          <input
-            type="text"
-            id="rate-gbp-input"
-            name="rate_gbp"
-            inputmode="decimal"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            value="5.1490"
-            aria-label="Kurs GBP do PLN"
-          >
-          <span class="fx-unit">zł</span>
-        </label>
-        <label class="fx-rate-chip" for="rate-sek-input">
-          <span class="fx-pair">1 SEK</span>
-          <input
-            type="text"
-            id="rate-sek-input"
-            name="rate_sek"
-            inputmode="decimal"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            value="0.3782"
-            aria-label="Kurs SEK do PLN"
-          >
-          <span class="fx-unit">zł</span>
-        </label>
-      </div>
+        <span id="fx-summary-rate" class="fx-summary-rate">1 EUR ≈ 4,32 zł</span>
+      </button>
       <a href="/diagram" class="diagram-link" target="_blank" rel="noopener">
         <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="7" height="7"></rect>
@@ -96,7 +55,7 @@
           <rect x="14" y="14" width="7" height="7"></rect>
           <path d="M10 6.5h4M17.5 10v4"></path>
         </svg>
-        Schemat architektury
+        Architektura
       </a>
     </div>
   </header>
@@ -104,16 +63,16 @@
   <main class="dispatch-workspace" id="main-content">
     <section class="command-deck" aria-labelledby="command-deck-heading">
       <div class="command-header-row">
-        <h2 id="command-deck-heading">Wyszukiwanie i identyfikacja katalogowa ASIN</h2>
+        <h2 id="command-deck-heading">Szukaj produktu lub wklej link z Amazon</h2>
         <p class="command-helper">
-          Wklej pełny link z <code>amazon.pl</code> (lub innego sklepu UE/UK), podaj 10-znakowy kod <code>ASIN</code> albo wpisz frazę kluczową, aby wyświetlić do 20 pozycji i wskazać dokładne wydanie.
+          Wklej link do oferty, wpisz nazwę (np. „Tapo H500”) lub kod ASIN. Sprawdzimy i porównamy ceny z dostawą do Polski w 9 europejskich sklepach Amazon.
         </p>
       </div>
 
       <form id="resolve-form" action="/api/resolve" method="GET" novalidate>
         <div class="command-grid">
           <div class="form-group query-field-group">
-            <label for="product-query-input">Link do produktu Amazon, kod ASIN lub słowo kluczowe</label>
+            <label for="product-query-input">Link do oferty Amazon, nazwa produktu lub kod ASIN</label>
             <div class="input-with-clear">
               <input
                 type="text"
@@ -126,18 +85,18 @@
                 spellcheck="false"
                 enterkeyhint="search"
                 value=""
-                placeholder="Wklej link z Amazon (np. amazon.pl/dp/...), kod ASIN lub wpisz nazwę produktu"
+                placeholder="Wklej link ze schowka, wpisz nazwę produktu lub ASIN"
                 aria-describedby="query-input-hint query-input-error"
               >
             </div>
             <span id="query-input-hint" class="field-hint">
-              Rozpoznaje linki <code>/dp/ASIN</code>, <code>/gp/product/ASIN</code> ze wszystkich 9 domen oraz zapytania tekstowe.
+              Obsługuje bezpośrednie linki ze wszystkich domen Amazon oraz wyszukiwanie po słowach kluczowych.
             </span>
             <span id="query-input-error" class="field-error" role="alert" aria-live="polite" hidden></span>
           </div>
 
           <div class="form-group market-field-group">
-            <label for="search-origin-select">Sklep bazowy dla słów kluczowych</label>
+            <label for="search-origin-select">Sklep początkowy wyszukiwania</label>
             <select id="search-origin-select" name="marketplaceId">
               <option value="PL" selected>Polska (amazon.pl)</option>
               <option value="DE">Niemcy (amazon.de)</option>
@@ -154,59 +113,59 @@
                 <circle cx="11" cy="11" r="7"></circle>
                 <line x1="21" y1="21" x2="16.35" y2="16.35"></line>
               </svg>
-              <span>Sprawdź ceny w 9 krajach</span>
+              <span>Porównaj ceny w 9 krajach</span>
             </button>
           </div>
         </div>
 
         <div class="controls-subbar">
           <fieldset class="spread-fieldset">
-            <legend>Spread przewalutowania płatności</legend>
+            <legend>Prowizja karty / banku za płatność w obcej walucie (EUR/GBP/SEK)</legend>
             <div class="radio-strip">
               <label class="radio-option" for="spread-0">
                 <input type="radio" id="spread-0" name="fxSpreadPct" value="0" checked>
-                <span>0% (Kurs NBP / Revolut)</span>
+                <span>0% — Karta wielowalutowa (Revolut, Zen)</span>
               </label>
               <label class="radio-option" for="spread-2">
                 <input type="radio" id="spread-2" name="fxSpreadPct" value="2">
-                <span>+2,0% (Karta bankowa)</span>
+                <span>+2,0% — Karta bankowa PLN</span>
               </label>
               <label class="radio-option" for="spread-35">
                 <input type="radio" id="spread-35" name="fxSpreadPct" value="3.5">
-                <span>+3,5% (Amazon Currency Converter)</span>
+                <span>+3,5% — Przelicznik Amazon</span>
               </label>
             </div>
           </fieldset>
 
           <div class="presets-strip" aria-label="Szybkie przykłady testowe">
-            <span class="presets-label">Przykłady:</span>
-            <button
-              type="button"
-              class="preset-chip"
-              data-input="https://www.amazon.pl/Carrie-Sissy-Spacek/dp/B0791VZ99Y"
-            >
-              Carrie [Blu-ray] (B0791VZ99Y)
-            </button>
+            <span class="presets-label">Szybkie przykłady:</span>
             <button
               type="button"
               class="preset-chip"
               data-input="https://www.amazon.pl/dp/B09XS7JWHH"
             >
-              Sony WH-1000XM5 (B09XS7JWHH)
+              Sony WH-1000XM5
             </button>
             <button
               type="button"
               class="preset-chip"
               data-input="https://www.amazon.de/dp/B08N5WRWNW"
             >
-              Logitech MX Master 3S (B08N5WRWNW)
+              Logitech MX Master 3S
+            </button>
+            <button
+              type="button"
+              class="preset-chip"
+              data-input="https://www.amazon.pl/Carrie-Sissy-Spacek/dp/B0791VZ99Y"
+            >
+              Carrie [Blu-ray]
             </button>
             <button
               type="button"
               class="preset-chip preset-chip-keyword"
-              data-input="Carrie"
+              data-input="Tapo H500"
             >
-              Słowo kluczowe: „Carrie” (lista 20 wydań)
+              Szukaj: „Tapo H500”
             </button>
           </div>
         </div>
@@ -216,7 +175,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
-            Parametry dostawy do Polski, ciasteczka sesji Amazon i tryb anty-CAPTCHA
+            Ustawienia dostawy do Polski i opcjonalna sesja Amazon
           </summary>
           <div class="session-drawer-grid">
             <div class="form-group">
@@ -231,7 +190,7 @@
                 value="00-001"
                 placeholder="00-001"
               >
-              <span class="field-hint">Używany jako kontekst lokalizacji dostawy do Polski.</span>
+              <span class="field-hint">Używany jako kontekst kalkulacji dostawy kurierskiej do Polski.</span>
             </div>
 
             <div class="form-group">
@@ -250,6 +209,35 @@
           </div>
         </details>
       </form>
+    </section>
+
+    <!-- Mobile Onboarding / Quick Guide -->
+    <section id="mobile-onboarding-card" class="mobile-onboarding-card" aria-label="Wskazówka mobilna">
+      <div class="onboarding-header">
+        <span class="onboarding-pill">
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+          Wskazówka na smartfona
+        </span>
+        <span class="onboarding-headline">Jak błyskawicznie sprawdzić cenę z aplikacji Amazon?</span>
+      </div>
+      <div class="onboarding-steps-row">
+        <div class="onboarding-step">
+          <span class="step-num">1</span>
+          <p>Przeglądaj oferty w oficjalnej aplikacji <strong>Amazon</strong> na telefonie.</p>
+        </div>
+        <div class="onboarding-step">
+          <span class="step-num">2</span>
+          <p>Kliknij przycisk <strong>Udostępnij</strong> pod zdjęciem wybranego produktu.</p>
+        </div>
+        <div class="onboarding-step">
+          <span class="step-num">3</span>
+          <p>Wybierz <strong>EuroAmazon Dispatch</strong> — automatycznie porównamy ceny w 9 krajach!</p>
+        </div>
+      </div>
     </section>
 
     <!-- Live Scraping Progress Panel -->
@@ -371,7 +359,7 @@
 
         <div class="manifest-verdict" id="manifest-verdict-box">
           <div class="verdict-cell verdict-winner">
-            <span class="verdict-label">Najniższa cena z dostawą (Landed PLN)</span>
+            <span class="verdict-label">Najniższa cena z dostawą do Polski</span>
             <strong class="verdict-value" id="verdict-best-price">Pobieranie…</strong>
             <span class="verdict-sub" id="verdict-best-store">Trwa odczyt 9 rynków Amazon</span>
           </div>
@@ -381,7 +369,7 @@
             <span class="verdict-sub" id="verdict-best-item-store">Trwa odczyt 9 rynków Amazon</span>
           </div>
           <div class="verdict-cell">
-            <span class="verdict-label">Bilans względem amazon.pl</span>
+            <span class="verdict-label">Oszczędność względem amazon.pl</span>
             <strong class="verdict-value" id="verdict-pl-delta">Trwa porównywanie…</strong>
             <span class="verdict-sub" id="verdict-pl-sub">Wyniki pojawiają się na żywo poniżej</span>
           </div>
@@ -390,9 +378,9 @@
 
       <div class="table-toolbar">
         <div class="sort-controls" role="group" aria-label="Sortowanie tabeli porównawczej">
-          <span class="toolbar-label">Sortuj wiersze:</span>
+          <span class="toolbar-label">Sortuj:</span>
           <button type="button" class="sort-btn is-active" data-sort="landed">
-            Cena z dostawą (PLN) ↑
+            Razem z dostawą (PLN) ↑
           </button>
           <button type="button" class="sort-btn" data-sort="item">
             Sam produkt (PLN) ↑
@@ -404,7 +392,7 @@
 
         <div class="toolbar-actions">
           <span class="inline-edit-hint">
-            Wskazówka: kliknij dowolne pole ceny lub dostawy w tabeli, aby wpisać własną wartość i przeliczyć ranking na żywo.
+            Wskazówka: kliknij dowolną kwotę, aby wprowadzić własną cenę lub koszt przesyłki.
           </span>
           <button type="button" id="reset-overrides-btn" class="secondary-btn" hidden>
             Resetuj ręczne korekty
@@ -430,7 +418,7 @@
               <th scope="col" class="num-col">Dostawa do PL (Waluta / PLN)</th>
               <th scope="col" class="num-col">Razem z dostawą (PLN)</th>
               <th scope="col" class="num-col">Różnica vs #1 / vs PL</th>
-              <th scope="col" class="action-col">Bezpośredni link</th>
+              <th scope="col" class="action-col">Oferta w sklepie</th>
             </tr>
           </thead>
           <tbody id="comparison-tbody">
@@ -471,7 +459,7 @@
               <div>
                 <h3 id="android-update-heading">Aktualizacje aplikacji</h3>
                 <p id="android-installed-version" class="section-subtext">
-                  Zainstalowana wersja 1.0.4
+                  Zainstalowana wersja 1.0.5
                 </p>
               </div>
               <button
@@ -555,21 +543,85 @@
             </div>
           </section>
 
+          <!-- Sekcja kursów walut NBP i własnych przeliczników -->
+          <section
+            id="drawer-fx-card"
+            class="drawer-info-card"
+            aria-labelledby="drawer-fx-heading"
+          >
+            <div class="section-bar update-header-bar">
+              <div>
+                <h3 id="drawer-fx-heading">Kursy walut NBP i przeliczniki</h3>
+                <p class="section-subtext">
+                  Aktualizowane automatycznie z NBP (Tabela A). Możesz też wpisać własny przelicznik:
+                </p>
+              </div>
+            </div>
+
+            <div class="drawer-fx-rates-group">
+              <label class="fx-rate-chip" for="rate-eur-input">
+                <span class="fx-pair">1 EUR</span>
+                <input
+                  type="text"
+                  id="rate-eur-input"
+                  name="rate_eur"
+                  inputmode="decimal"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  value="4.3185"
+                  aria-label="Kurs EUR do PLN"
+                >
+                <span class="fx-unit">zł</span>
+              </label>
+              <label class="fx-rate-chip" for="rate-gbp-input">
+                <span class="fx-pair">1 GBP</span>
+                <input
+                  type="text"
+                  id="rate-gbp-input"
+                  name="rate_gbp"
+                  inputmode="decimal"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  value="5.1490"
+                  aria-label="Kurs GBP do PLN"
+                >
+                <span class="fx-unit">zł</span>
+              </label>
+              <label class="fx-rate-chip" for="rate-sek-input">
+                <span class="fx-pair">1 SEK</span>
+                <input
+                  type="text"
+                  id="rate-sek-input"
+                  name="rate_sek"
+                  inputmode="decimal"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  value="0.3782"
+                  aria-label="Kurs SEK do PLN"
+                >
+                <span class="fx-unit">zł</span>
+              </label>
+            </div>
+          </section>
+
           <section class="drawer-info-card" aria-labelledby="drawer-markets-heading">
             <h3 id="drawer-markets-heading">Obsługiwane rynki Amazon (9 krajów)</h3>
             <p class="field-hint">
               Jednoczesny odczyt cen produktu oraz wysyłki do Polski z przeliczeniem po kursach NBP Tabela A:
             </p>
             <ul class="drawer-market-list">
-              <li><code>amazon.pl</code> — Polska (PLN)</li>
-              <li><code>amazon.de</code> — Niemcy (EUR)</li>
-              <li><code>amazon.es</code> — Hiszpania (EUR)</li>
-              <li><code>amazon.it</code> — Włochy (EUR)</li>
-              <li><code>amazon.fr</code> — Francja (EUR)</li>
-              <li><code>amazon.nl</code> — Holandia (EUR)</li>
-              <li><code>amazon.com.be</code> — Belgia (EUR)</li>
-              <li><code>amazon.se</code> — Szwecja (SEK)</li>
-              <li><code>amazon.co.uk</code> — Wielka Brytania (GBP)</li>
+              <li><code>amazon.pl</code>: Polska (PLN)</li>
+              <li><code>amazon.de</code>: Niemcy (EUR)</li>
+              <li><code>amazon.es</code>: Hiszpania (EUR)</li>
+              <li><code>amazon.it</code>: Włochy (EUR)</li>
+              <li><code>amazon.fr</code>: Francja (EUR)</li>
+              <li><code>amazon.nl</code>: Holandia (EUR)</li>
+              <li><code>amazon.com.be</code>: Belgia (EUR)</li>
+              <li><code>amazon.se</code>: Szwecja (SEK)</li>
+              <li><code>amazon.co.uk</code>: Wielka Brytania (GBP)</li>
             </ul>
             <div class="drawer-links-row">
               <a

@@ -37,6 +37,8 @@ const dom = {
   rateSekInput: document.getElementById('rate-sek-input'),
   fxSourceBadge: document.getElementById('fx-source-badge'),
   fxDateLabel: document.getElementById('fx-date-label'),
+  fxSummaryBtn: document.getElementById('fx-summary-btn'),
+  fxSummaryRate: document.getElementById('fx-summary-rate'),
 
   candidatesSection: document.getElementById('candidates-section'),
   candidatesHeading: document.getElementById('candidates-heading'),
@@ -334,6 +336,9 @@ function updateFxBanner(exchangeRates) {
   if (exchangeRates.ratesToPln) {
     if (exchangeRates.ratesToPln.EUR) {
       dom.rateEurInput.value = Number(exchangeRates.ratesToPln.EUR).toFixed(4);
+      if (dom.fxSummaryRate) {
+        dom.fxSummaryRate.textContent = `1 EUR ≈ ${Number(exchangeRates.ratesToPln.EUR).toFixed(2).replace('.', ',')} zł`;
+      }
     }
     if (exchangeRates.ratesToPln.GBP) {
       dom.rateGbpInput.value = Number(exchangeRates.ratesToPln.GBP).toFixed(4);
@@ -568,9 +573,7 @@ function renderComparisonReport(report) {
 
   report.offers.forEach((row) => {
     const tr = document.createElement('tr');
-    if (row.isBestLanded) {
-      tr.classList.add('is-best-row');
-    }
+    tr.className = row.isBestLanded ? 'is-best-row is-expanded' : 'is-collapsed';
 
     const isAvailableWithPrice =
       row.itemPrice !== null && Number.isFinite(row.itemPrice);
@@ -578,6 +581,9 @@ function renderComparisonReport(report) {
     // 1. Store / Country header cell
     const th = document.createElement('th');
     th.scope = 'row';
+    th.tabIndex = 0;
+    th.setAttribute('role', 'button');
+    th.setAttribute('aria-expanded', String(row.isBestLanded));
 
     const storeInner = document.createElement('div');
     storeInner.className = 'store-cell-inner';
@@ -629,7 +635,7 @@ function renderComparisonReport(report) {
     if (row.isBestLanded) {
       const winBadge = document.createElement('span');
       winBadge.className = 'winner-badge';
-      winBadge.textContent = '#1 NAJNIŻSZA CENA Z DOSTAWĄ';
+      winBadge.textContent = '#1 NAJTAŃSZY Z DOSTAWĄ DO PL';
       meta.appendChild(winBadge);
     } else if (row.isBestItemPrice) {
       const itemBadge = document.createElement('span');
@@ -638,8 +644,39 @@ function renderComparisonReport(report) {
       meta.appendChild(itemBadge);
     }
 
-    storeInner.append(rowThumb, badge, meta);
+    const mobileHeaderSummary = document.createElement('div');
+    mobileHeaderSummary.className = 'mobile-header-summary';
+
+    const mobilePrice = document.createElement('strong');
+    mobilePrice.className = 'mobile-header-price';
+    mobilePrice.textContent = formatPln(row.landedPricePln);
+
+    const mobileChevron = document.createElement('span');
+    mobileChevron.className = 'mobile-chevron';
+    mobileChevron.setAttribute('aria-hidden', 'true');
+    mobileChevron.textContent = row.isBestLanded ? '▴' : '▾';
+
+    mobileHeaderSummary.append(mobilePrice, mobileChevron);
+
+    storeInner.append(rowThumb, badge, meta, mobileHeaderSummary);
     th.appendChild(storeInner);
+
+    const toggleRowExpansion = (e) => {
+      if (e.target.closest('input, button, a')) return;
+      const willExpand = !tr.classList.contains('is-expanded');
+      tr.classList.toggle('is-expanded', willExpand);
+      tr.classList.toggle('is-collapsed', !willExpand);
+      th.setAttribute('aria-expanded', String(willExpand));
+      mobileChevron.textContent = willExpand ? '▴' : '▾';
+    };
+
+    th.addEventListener('click', toggleRowExpansion);
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleRowExpansion(e);
+      }
+    });
 
     // 2. Native ItemPrice cell
     const tdNativePrice = document.createElement('td');
@@ -1253,16 +1290,33 @@ dom.queryInput.addEventListener('keydown', (e) => {
 
 dom.form.addEventListener('submit', (e) => {
   e.preventDefault();
+  if (document.activeElement && typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
   handleResolveSubmit(dom.queryInput.value);
 });
 
 // Preset chips
 document.querySelectorAll('.preset-chip').forEach((btn) => {
   btn.addEventListener('click', () => {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
     const targetInput = btn.getAttribute('data-input') || '';
     dom.queryInput.value = targetInput;
     handleResolveSubmit(targetInput);
   });
+});
+
+// FX summary chip opens rates inside navigation drawer
+dom.fxSummaryBtn?.addEventListener('click', () => {
+  openDrawer();
+  const fxCard = document.getElementById('drawer-fx-card');
+  if (fxCard) {
+    setTimeout(() => {
+      fxCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  }
 });
 
 // Spread radio buttons & live FX inputs trigger immediate recalculation
@@ -1315,6 +1369,30 @@ window.__handleExternalSharedInput = (sharedText) => {
   const queryToRun = urlMatch ? urlMatch[0] : text;
   dom.queryInput.value = queryToRun;
   handleResolveSubmit(queryToRun);
+};
+
+// Android System Back Navigation Bridge
+window.__handleAndroidBack = () => {
+  // 1. If navigation drawer is open, close it
+  if (dom.drawer && dom.drawer.matches(':popover-open')) {
+    closeDrawer();
+    return true;
+  }
+  // 2. If candidates list is expanded, collapse it
+  if (
+    dom.candidatesSection &&
+    !dom.candidatesSection.hidden &&
+    !dom.candidatesSection.classList.contains('is-collapsed')
+  ) {
+    setCandidatesCollapsed(true);
+    return true;
+  }
+  // 3. If comparison is displayed and page is scrolled down, scroll smoothly to top
+  if (dom.comparisonSection && !dom.comparisonSection.hidden && window.scrollY > 80) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+  }
+  return false;
 };
 
 // Top-Layer Navigation Drawer / Hamburger Menu (modern-web-guidance: navigation-drawer)
@@ -1395,7 +1473,7 @@ window.__onAndroidUpdateState = (snap) => {
   dom.androidUpdateSection.hidden = false;
 
   if (dom.androidInstalledVersion) {
-    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.4'}`;
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.5'}`;
   }
 
   if (dom.drawerUpdateDot) {
