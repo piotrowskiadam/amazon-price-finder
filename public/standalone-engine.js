@@ -213,6 +213,37 @@ if (typeof window !== 'undefined') {
     const entry = pendingFetches.get(reqId);
     if (!entry) return;
     pendingFetches.delete(reqId);
+
+    // If Kotlin sent metadata with bodyLength (chunked mode to avoid 1MB Binder IPC limit)
+    if (
+      payload &&
+      typeof payload.bodyLength === 'number' &&
+      typeof window.EuroAmazonAndroid?.readHttpBodyChunk === 'function'
+    ) {
+      const totalLen = payload.bodyLength;
+      const chunkSize = 240000;
+      const parts = [];
+      try {
+        for (let offset = 0; offset < totalLen; offset += chunkSize) {
+          parts.push(
+            window.EuroAmazonAndroid.readHttpBodyChunk(
+              reqId,
+              offset,
+              Math.min(totalLen, offset + chunkSize),
+            ),
+          );
+        }
+      } finally {
+        window.EuroAmazonAndroid.releaseHttpBody?.(reqId);
+      }
+      entry.resolve({
+        status: payload.status ?? 0,
+        body: parts.join(''),
+        error: payload.error ?? null,
+      });
+      return;
+    }
+
     entry.resolve(payload);
   };
 }
@@ -225,19 +256,50 @@ export function isAndroidStandaloneMode() {
   );
 }
 
-function nativeHttpFetch(url, domain, acceptLanguage, cookieHeader) {
-  return new Promise((resolve, reject) => {
-    if (!isAndroidStandaloneMode()) {
-      reject(new Error('Brak mostka natywnego Androida.'));
-      return;
+async function nativeHttpFetch(url, domain, acceptLanguage, cookieHeader) {
+  if (!isAndroidStandaloneMode()) {
+    throw new Error('Brak mostka natywnego Androida.');
+  }
+
+  // Primary transport: stream via WebView shouldInterceptRequest (/ __proxy)
+  // This streams arbitrarily large HTML (e.g. 2 MB search results) via InputStream
+  // without touching Android's 1 MB Binder / evaluateJavascript IPC limit.
+  try {
+    const proxyUrl = `https://appassets.euroamazon.local/__proxy?url=${encodeURIComponent(
+      url,
+    )}&lang=${encodeURIComponent(
+      acceptLanguage || 'pl-PL,pl;q=0.9,en;q=0.8',
+    )}&cookie=${encodeURIComponent(cookieHeader || '')}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14000);
+    const res = await fetch(proxyUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const upstreamStatusHeader = res.headers.get('X-Upstream-Status');
+    if (upstreamStatusHeader !== null) {
+      const status = Number.parseInt(upstreamStatusHeader, 10) || 0;
+      const errorHeader = res.headers.get('X-Upstream-Error') || null;
+      const body = await res.text();
+      return { status, body, error: errorHeader };
     }
+  } catch {
+    // Fall back to chunked JavascriptInterface bridge below
+  }
+
+  return new Promise((resolve) => {
     const reqId = nextReqId++;
     const timer = setTimeout(() => {
       if (pendingFetches.has(reqId)) {
         pendingFetches.delete(reqId);
+        window.EuroAmazonAndroid?.releaseHttpBody?.(reqId);
         resolve({ status: 0, body: '', error: 'Przekroczono czas oczekiwania' });
       }
-    }, 12000);
+    }, 14000);
 
     pendingFetches.set(reqId, {
       resolve: (res) => {
@@ -1313,69 +1375,86 @@ export async function searchCandidatesOnAndroid(
   });
 
   const searchUrl = `https://www.${marketplace.domain}/s?k=${encodeURIComponent(query.trim())}`;
-  const res = await nativeHttpFetch(
-    searchUrl,
-    marketplace.domain,
-    marketplace.languageTag,
-    config?.cookieHeader || '',
-  );
-
   const candidates = [];
   const seenAsins = new Set();
 
-  if (res.status === 200 && res.body) {
-    const doc = new DOMParser().parseFromString(res.body, 'text/html');
-    const items = doc.querySelectorAll(
-      'div[data-component-type="s-search-result"][data-asin], div.s-result-item[data-asin]',
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await nativeHttpFetch(
+      searchUrl,
+      marketplace.domain,
+      marketplace.languageTag,
+      config?.cookieHeader || '',
     );
 
-    for (const el of items) {
-      if (candidates.length >= 20) break;
-      const asin = (el.getAttribute('data-asin') || '').trim().toUpperCase();
-      if (!asin || asin.length !== 10 || seenAsins.has(asin)) continue;
+    if (res.status >= 200 && res.status < 400 && res.body) {
+      const doc = new DOMParser().parseFromString(res.body, 'text/html');
+      const items = doc.querySelectorAll(
+        'div[data-component-type="s-search-result"][data-asin], div.s-result-item[data-asin], [data-asin]',
+      );
 
-      const imgEl = el.querySelector('img.s-image');
-      const title =
-        (el.querySelector('h2 span')?.textContent || '').trim() ||
-        (el.querySelector('h2')?.textContent || '').trim() ||
-        (imgEl?.getAttribute('alt') || '').trim();
-      if (!title) continue;
-
-      seenAsins.add(asin);
-
-      let imageUrl = imgEl?.getAttribute('src')?.trim() || null;
-      if (!imageUrl) {
-        const srcset = imgEl?.getAttribute('srcset')?.trim();
-        if (srcset) {
-          imageUrl = srcset.split(',')[0]?.trim().split(/\s+/)[0] || null;
+      for (const el of items) {
+        if (candidates.length >= 20) break;
+        const asin = (el.getAttribute('data-asin') || '').trim().toUpperCase();
+        if (!asin || !/^[A-Z0-9]{10}$/.test(asin) || seenAsins.has(asin)) {
+          continue;
         }
+
+        const imgEl = el.querySelector('img.s-image, img[data-image-latency]');
+        const title =
+          (el.querySelector('h2 span')?.textContent || '').trim() ||
+          (el.querySelector('h2 a')?.textContent || '').trim() ||
+          (el.querySelector('h2')?.textContent || '').trim() ||
+          (imgEl?.getAttribute('alt') || '')
+            .replace(/^Reklama sponsorowana\s*[—–-]\s*/i, '')
+            .trim();
+        if (!title || title.length < 3) continue;
+
+        seenAsins.add(asin);
+
+        let imageUrl = imgEl?.getAttribute('src')?.trim() || null;
+        if (!imageUrl) {
+          const srcset = imgEl?.getAttribute('srcset')?.trim();
+          if (srcset) {
+            imageUrl = srcset.split(',')[0]?.trim().split(/\s+/)[0] || null;
+          }
+        }
+
+        const rawPrice = (
+          el.querySelector('.a-price .a-offscreen')?.textContent || ''
+        ).trim();
+        const previewPrice = parseLocalizedMoney(rawPrice);
+        const rating =
+          (el.querySelector('span.a-icon-alt')?.textContent || '').trim() ||
+          null;
+        const reviewCount =
+          (
+            el.querySelector('span.a-size-base.s-underline-text')
+              ?.textContent ||
+            el.querySelector('a[href*="#customerReviews"] span')?.textContent ||
+            ''
+          ).trim() || null;
+
+        candidates.push({
+          asin,
+          title,
+          imageUrl,
+          previewPrice,
+          currency: marketplace.currency,
+          previewPriceFormatted: rawPrice || null,
+          rating,
+          reviewCount,
+          productUrl: `https://www.${marketplace.domain}/dp/${asin}?th=1&psc=1`,
+          marketplaceId: marketplace.id,
+        });
       }
+    }
 
-      const rawPrice = (
-        el.querySelector('.a-price .a-offscreen')?.textContent || ''
-      ).trim();
-      const previewPrice = parseLocalizedMoney(rawPrice);
-      const rating =
-        (el.querySelector('span.a-icon-alt')?.textContent || '').trim() || null;
-      const reviewCount =
-        (
-          el.querySelector('span.a-size-base.s-underline-text')?.textContent ||
-          el.querySelector('a[href*="#customerReviews"] span')?.textContent ||
-          ''
-        ).trim() || null;
+    if (candidates.length > 0) {
+      break;
+    }
 
-      candidates.push({
-        asin,
-        title,
-        imageUrl,
-        previewPrice,
-        currency: marketplace.currency,
-        previewPriceFormatted: rawPrice || null,
-        rating,
-        reviewCount,
-        productUrl: `https://www.${marketplace.domain}/dp/${asin}`,
-        marketplaceId: marketplace.id,
-      });
+    if (attempt === 0) {
+      await delay(550);
     }
   }
 

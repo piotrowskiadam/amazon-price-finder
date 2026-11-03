@@ -1395,7 +1395,7 @@ window.__onAndroidUpdateState = (snap) => {
   dom.androidUpdateSection.hidden = false;
 
   if (dom.androidInstalledVersion) {
-    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.3'}`;
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.4'}`;
   }
 
   if (dom.drawerUpdateDot) {

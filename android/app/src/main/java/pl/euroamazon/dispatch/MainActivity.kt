@@ -39,7 +39,9 @@ import java.net.CookiePolicy
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPInputStream
 
 class MainActivity : Activity() {
@@ -49,6 +51,8 @@ class MainActivity : Activity() {
     private val httpPool = Executors.newFixedThreadPool(4)
     private val updatePool = Executors.newSingleThreadExecutor()
     private val downloadPool = Executors.newSingleThreadExecutor()
+    private val responseBodyStore = ConcurrentHashMap<Int, String>()
+    private val proxyReqCounter = AtomicInteger(1)
 
     private lateinit var installedVersion: AppVersion
     private lateinit var updates: UpdateRepository
@@ -127,6 +131,32 @@ class MainActivity : Activity() {
                     val uri = request?.url ?: return null
                     if (uri.host.equals(APP_HOST, ignoreCase = true)) {
                         val rawPath = (uri.path ?: "/index.html").trimStart('/')
+                        if (rawPath == "__proxy") {
+                            val targetUrl = uri.getQueryParameter("url") ?: ""
+                            val acceptLanguage = uri.getQueryParameter("lang") ?: "pl-PL,pl;q=0.9,en;q=0.8"
+                            val cookieHeader = uri.getQueryParameter("cookie") ?: ""
+                            val rawRes = fetchUpstreamRaw(
+                                rawUrl = targetUrl,
+                                acceptLanguage = acceptLanguage,
+                                cookieHeader = cookieHeader,
+                                reqId = proxyReqCounter.getAndIncrement()
+                            )
+                            val bytes = rawRes.body.toByteArray(StandardCharsets.UTF_8)
+                            return WebResourceResponse(
+                                "text/plain",
+                                "UTF-8",
+                                200,
+                                "OK",
+                                mapOf(
+                                    "Access-Control-Allow-Origin" to "*",
+                                    "Access-Control-Expose-Headers" to "X-Upstream-Status, X-Upstream-Error",
+                                    "X-Upstream-Status" to rawRes.status.toString(),
+                                    "X-Upstream-Error" to (rawRes.error ?: ""),
+                                    "Cache-Control" to "no-store"
+                                ),
+                                ByteArrayInputStream(bytes)
+                            )
+                        }
                         val assetName = if (rawPath.isEmpty()) "index.html" else rawPath
                         val mimeType = when {
                             assetName.endsWith(".html") -> "text/html"
@@ -417,11 +447,17 @@ class MainActivity : Activity() {
             cookieHeader: String
         ) {
             httpPool.execute {
-                val resultJson = performNativeGet(url, domain, acceptLanguage, cookieHeader, reqId)
+                val raw = fetchUpstreamRaw(url, acceptLanguage, cookieHeader, reqId)
+                responseBodyStore[reqId] = raw.body
+                val metaJson = JSONObject().apply {
+                    put("status", raw.status)
+                    put("bodyLength", raw.body.length)
+                    put("error", raw.error ?: JSONObject.NULL)
+                }.toString()
                 mainHandler.post {
                     if (!isDestroyed && ::webView.isInitialized) {
                         webView.evaluateJavascript(
-                            "window.__resolveAndroidFetch && window.__resolveAndroidFetch($reqId, $resultJson);",
+                            "window.__resolveAndroidFetch && window.__resolveAndroidFetch($reqId, $metaJson);",
                             null
                         )
                     }
@@ -429,76 +465,86 @@ class MainActivity : Activity() {
             }
         }
 
-        private fun performNativeGet(
-            rawUrl: String,
-            domain: String,
-            acceptLanguage: String,
-            cookieHeader: String,
-            reqId: Int
-        ): String {
-            var connection: HttpURLConnection? = null
-            return try {
-                val url = URL(rawUrl)
-                connection = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    instanceFollowRedirects = true
-                    connectTimeout = 9000
-                    readTimeout = 9000
-                    setRequestProperty(
-                        "User-Agent",
-                        USER_AGENTS[reqId % USER_AGENTS.size]
-                    )
-                    setRequestProperty(
-                        "Accept",
-                        "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7"
-                    )
-                    setRequestProperty(
-                        "Accept-Language",
-                        acceptLanguage.ifBlank { "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7" }
-                    )
-                    setRequestProperty("Accept-Encoding", "gzip")
-                    setRequestProperty("Sec-Fetch-Dest", "document")
-                    setRequestProperty("Sec-Fetch-Mode", "navigate")
-                    setRequestProperty("Sec-Fetch-Site", "none")
-                    setRequestProperty("Upgrade-Insecure-Requests", "1")
-                    if (cookieHeader.isNotBlank()) {
-                        setRequestProperty("Cookie", cookieHeader.trim())
-                    }
-                }
+        @JavascriptInterface
+        fun readHttpBodyChunk(reqId: Int, start: Int, end: Int): String {
+            val body = responseBodyStore[reqId] ?: return ""
+            val safeStart = start.coerceIn(0, body.length)
+            val safeEnd = end.coerceIn(safeStart, body.length)
+            return body.substring(safeStart, safeEnd)
+        }
 
-                val status = connection.responseCode
-                val rawStream: InputStream? = try {
-                    if (status in 200..399) connection.inputStream else connection.errorStream
-                } catch (_: Exception) {
-                    connection.errorStream
-                }
+        @JavascriptInterface
+        fun releaseHttpBody(reqId: Int) {
+            responseBodyStore.remove(reqId)
+        }
+    }
 
-                val bodyText = if (rawStream != null) {
-                    val encoding = connection.contentEncoding ?: ""
-                    val decodedStream = if (encoding.contains("gzip", ignoreCase = true)) {
-                        GZIPInputStream(rawStream)
-                    } else {
-                        rawStream
-                    }
-                    decodedStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-                } else {
-                    ""
-                }
+    private data class UpstreamResponse(
+        val status: Int,
+        val body: String,
+        val error: String?
+    )
 
-                JSONObject().apply {
-                    put("status", status)
-                    put("body", bodyText)
-                    put("error", JSONObject.NULL)
-                }.toString()
-            } catch (e: Exception) {
-                JSONObject().apply {
-                    put("status", 0)
-                    put("body", "")
-                    put("error", e.message ?: "Błąd połączenia HTTP")
-                }.toString()
-            } finally {
-                connection?.disconnect()
+    private fun fetchUpstreamRaw(
+        rawUrl: String,
+        acceptLanguage: String,
+        cookieHeader: String,
+        reqId: Int
+    ): UpstreamResponse {
+        var connection: HttpURLConnection? = null
+        return try {
+            val url = URL(rawUrl)
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                instanceFollowRedirects = true
+                connectTimeout = 10000
+                readTimeout = 10000
+                setRequestProperty(
+                    "User-Agent",
+                    USER_AGENTS[Math.abs(reqId) % USER_AGENTS.size]
+                )
+                setRequestProperty(
+                    "Accept",
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7"
+                )
+                setRequestProperty(
+                    "Accept-Language",
+                    acceptLanguage.ifBlank { "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7" }
+                )
+                setRequestProperty("Accept-Encoding", "gzip")
+                setRequestProperty("Sec-Fetch-Dest", "document")
+                setRequestProperty("Sec-Fetch-Mode", "navigate")
+                setRequestProperty("Sec-Fetch-Site", "none")
+                setRequestProperty("Upgrade-Insecure-Requests", "1")
+                if (cookieHeader.isNotBlank()) {
+                    setRequestProperty("Cookie", cookieHeader.trim())
+                }
             }
+
+            val status = connection.responseCode
+            val rawStream: InputStream? = try {
+                if (status in 200..399) connection.inputStream else connection.errorStream
+            } catch (_: Exception) {
+                connection.errorStream
+            }
+
+            val bodyText = if (rawStream != null) {
+                val encoding = connection.contentEncoding ?: ""
+                val decodedStream = if (encoding.contains("gzip", ignoreCase = true)) {
+                    GZIPInputStream(rawStream)
+                } else {
+                    rawStream
+                }
+                decodedStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            } else {
+                ""
+            }
+
+            UpstreamResponse(status = status, body = bodyText, error = null)
+        } catch (e: Exception) {
+            UpstreamResponse(status = 0, body = "", error = e.message ?: "Błąd połączenia HTTP")
+        } finally {
+            connection?.disconnect()
         }
     }
 }
