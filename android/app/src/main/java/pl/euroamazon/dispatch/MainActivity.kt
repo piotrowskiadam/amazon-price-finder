@@ -2,6 +2,9 @@ package pl.euroamazon.dispatch
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -9,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
+import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -17,7 +21,17 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import org.json.JSONObject
+import pl.euroamazon.dispatch.updates.AndroidApkVerifier
+import pl.euroamazon.dispatch.updates.ApkDownloadRepository
+import pl.euroamazon.dispatch.updates.AppRelease
+import pl.euroamazon.dispatch.updates.AppVersion
+import pl.euroamazon.dispatch.updates.DownloadPhase
+import pl.euroamazon.dispatch.updates.GitHubApkTransport
+import pl.euroamazon.dispatch.updates.GitHubReleaseSource
+import pl.euroamazon.dispatch.updates.UpdateFileProvider
+import pl.euroamazon.dispatch.updates.UpdateRepository
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.io.InputStream
 import java.net.CookieHandler
 import java.net.CookieManager
@@ -33,12 +47,25 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private val mainHandler = Handler(Looper.getMainLooper())
     private val httpPool = Executors.newFixedThreadPool(4)
+    private val updatePool = Executors.newSingleThreadExecutor()
+    private val downloadPool = Executors.newSingleThreadExecutor()
+
+    private lateinit var installedVersion: AppVersion
+    private lateinit var updates: UpdateRepository
+    private lateinit var apkDownloads: ApkDownloadRepository
+
     private var pageLoaded = false
     private var pendingSharedText: String? = null
+    @Volatile
+    private var openingInstaller = false
 
     companion object {
         private const val APP_HOST = "appassets.euroamazon.local"
         private const val APP_START_URL = "https://appassets.euroamazon.local/index.html"
+        private const val PREFS_NAME = "euroamazon_updates_prefs"
+        private const val KEY_GITHUB_TOKEN = "github_token"
+        private const val REQ_INSTALL_PERMISSION = 4102
+
         private val USER_AGENTS = arrayOf(
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -56,6 +83,33 @@ class MainActivity : Activity() {
             CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
         }
 
+        val verName = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.0"
+        }.getOrDefault("1.0.0")
+        installedVersion = runCatching { AppVersion.parse(verName) }.getOrElse { AppVersion.parse("1.0.0") }
+
+        val tokenProvider: () -> String? = {
+            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_GITHUB_TOKEN, null)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        }
+
+        val verifier = AndroidApkVerifier(applicationContext)
+        updates = UpdateRepository(
+            directory = File(filesDir, "updates"),
+            source = GitHubReleaseSource(tokenProvider = tokenProvider),
+            installed = installedVersion,
+            onStateChanged = { pushUpdateStateToWebView() }
+        )
+        apkDownloads = ApkDownloadRepository(
+            directory = File(filesDir, "updates/apk"),
+            installed = installedVersion,
+            transport = GitHubApkTransport(tokenProvider = tokenProvider),
+            verifyIdentity = verifier::verify,
+            onStateChanged = { pushUpdateStateToWebView() }
+        )
+
         extractSharedIntent(intent)
 
         webView = WebView(this).apply {
@@ -63,7 +117,6 @@ class MainActivity : Activity() {
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
-                databaseEnabled = true
                 allowFileAccess = false
                 allowContentAccess = false
                 mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
@@ -129,6 +182,7 @@ class MainActivity : Activity() {
                     super.onPageFinished(view, url)
                     pageLoaded = true
                     flushPendingSharedText()
+                    pushUpdateStateToWebView()
                 }
             }
 
@@ -167,6 +221,21 @@ class MainActivity : Activity() {
 
         setContentView(webView)
         webView.loadUrl(APP_START_URL)
+
+        updatePool.execute {
+            updates.load()
+            apkDownloads.load()
+            updates.check(force = false)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::updates.isInitialized) {
+            updatePool.execute {
+                updates.check(force = false)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -174,6 +243,100 @@ class MainActivity : Activity() {
         setIntent(intent)
         extractSharedIntent(intent)
         flushPendingSharedText()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_INSTALL_PERMISSION) {
+            if (packageManager.canRequestPackageInstalls()) {
+                triggerInstallUpdate()
+            } else {
+                apkDownloads.installationError(
+                    "Aby zainstalować aktualizację, zezwól EuroAmazon Dispatch na instalowanie aplikacji w ustawieniach Androida."
+                )
+            }
+        }
+    }
+
+    private fun triggerInstallUpdate() {
+        if (openingInstaller) return
+        openingInstaller = true
+        downloadPool.execute {
+            try {
+                apkDownloads.installationError(null)
+                val apk = apkDownloads.preparedApk() ?: return@execute
+                mainHandler.post {
+                    try {
+                        if (!packageManager.canRequestPackageInstalls()) {
+                            @Suppress("DEPRECATION")
+                            startActivityForResult(
+                                Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:$packageName")
+                                ),
+                                REQ_INSTALL_PERMISSION
+                            )
+                        } else {
+                            val uri = UpdateFileProvider.uriForApk(this@MainActivity)
+                            val installIntent = Intent(Intent.ACTION_VIEW)
+                                .setDataAndType(uri, "application/vnd.android.package-archive")
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                .apply {
+                                    clipData = ClipData.newRawUri("Aktualizacja EuroAmazon Dispatch", uri)
+                                }
+                            startActivity(installIntent)
+                        }
+                    } catch (_: ActivityNotFoundException) {
+                        apkDownloads.installationError("Nie udało się otworzyć instalatora Androida. Spróbuj ponownie.")
+                    } catch (_: SecurityException) {
+                        apkDownloads.installationError("Android nie zezwolił na instalację. Sprawdź zgodę i spróbuj ponownie.")
+                    }
+                }
+            } finally {
+                openingInstaller = false
+            }
+        }
+    }
+
+    private fun buildUpdateSnapshotJson(): String {
+        val up = updates.state
+        val dl = apkDownloads.state
+        val activeRelease: AppRelease? = dl.release?.takeIf {
+            dl.busy || dl.phase == DownloadPhase.Ready
+        } ?: up.available ?: dl.release
+
+        val hasToken = !getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_GITHUB_TOKEN, null).isNullOrBlank()
+
+        return JSONObject().apply {
+            put("installedVersion", installedVersion.toString())
+            put("repository", AppRelease.Repository)
+            put("repositoryUrl", AppRelease.RepositoryUrl)
+            put("hasGithubToken", hasToken)
+            put("checking", up.checking)
+            put("checkedAt", up.checkedAt)
+            put("checkError", up.error ?: JSONObject.NULL)
+            put("availableVersion", up.available?.version?.toString() ?: JSONObject.NULL)
+            put("releaseVersion", activeRelease?.version?.toString() ?: JSONObject.NULL)
+            put("releaseSize", activeRelease?.size ?: 0L)
+            put("releasePageUrl", activeRelease?.pageUrl ?: JSONObject.NULL)
+            put("downloadPhase", dl.phase.name)
+            put("downloadedBytes", dl.bytes)
+            put("downloadError", dl.error ?: JSONObject.NULL)
+        }.toString()
+    }
+
+    private fun pushUpdateStateToWebView() {
+        mainHandler.post {
+            if (!isDestroyed && pageLoaded && ::webView.isInitialized) {
+                val json = buildUpdateSnapshotJson()
+                webView.evaluateJavascript(
+                    "window.__onAndroidUpdateState && window.__onAndroidUpdateState($json);",
+                    null
+                )
+            }
+        }
     }
 
     private fun extractSharedIntent(intent: Intent?) {
@@ -220,10 +383,54 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         httpPool.shutdownNow()
+        updatePool.shutdownNow()
+        downloadPool.shutdownNow()
         super.onDestroy()
     }
 
     inner class NativeHttpBridge {
+        @JavascriptInterface
+        fun requestUpdateSnapshot() {
+            pushUpdateStateToWebView()
+        }
+
+        @JavascriptInterface
+        fun checkUpdates() {
+            updatePool.execute {
+                updates.check(force = true)
+            }
+        }
+
+        @JavascriptInterface
+        fun downloadUpdate() {
+            downloadPool.execute {
+                val target = updates.state.available ?: apkDownloads.state.release ?: return@execute
+                apkDownloads.download(target)
+            }
+        }
+
+        @JavascriptInterface
+        fun cancelUpdateDownload() {
+            apkDownloads.cancel()
+        }
+
+        @JavascriptInterface
+        fun installUpdate() {
+            triggerInstallUpdate()
+        }
+
+        @JavascriptInterface
+        fun saveGithubToken(token: String) {
+            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_GITHUB_TOKEN, token.trim())
+                .apply()
+            pushUpdateStateToWebView()
+            updatePool.execute {
+                updates.check(force = true)
+            }
+        }
+
         @JavascriptInterface
         fun startHttpFetch(
             reqId: Int,

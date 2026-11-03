@@ -1789,6 +1789,72 @@ code {
   border-style: dashed;
 }
 
+/* Android App Self-Update Section (kino-charlie-android pattern) */
+.android-update-section {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  overflow: hidden;
+}
+
+.update-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.update-available-box {
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.update-release-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.update-available-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-vermilion);
+}
+
+.update-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.update-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.update-status-message {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-primary);
+}
+
+.update-token-drawer {
+  margin-block-start: 0.25rem;
+  border: 1px solid var(--rule-cell);
+  border-radius: var(--radius-sm);
+}
+
 /* Footer */
 .ledger-footer {
   border-block-start: 1px solid var(--rule-cell);

@@ -424,6 +424,128 @@
         </table>
       </div>
     </section>
+
+    <!-- Sekcja aktualizacji aplikacji Android (wzorowana na kino-charlie-android) -->
+    <section
+      id="android-update-section"
+      class="android-update-section"
+      aria-labelledby="android-update-heading"
+      hidden
+    >
+      <div class="section-bar update-header-bar">
+        <div>
+          <h2 id="android-update-heading">Aktualizacje aplikacji</h2>
+          <p id="android-installed-version" class="section-subtext">
+            Zainstalowana wersja 1.0.0
+          </p>
+        </div>
+        <button
+          type="button"
+          id="check-updates-btn"
+          class="secondary-btn update-check-btn"
+        >
+          Sprawdź aktualizacje
+        </button>
+      </div>
+
+      <div class="update-body">
+        <div id="update-available-box" class="update-available-box" hidden>
+          <div class="update-release-row">
+            <strong id="update-available-title" class="update-available-title">
+              Dostępna wersja —
+            </strong>
+            <a
+              id="update-changelog-link"
+              class="store-outbound-link"
+              href="https://github.com/piotrowskiadam/amazon-price-finder/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Co nowego w tej wersji ↗
+            </a>
+          </div>
+
+          <div
+            id="update-download-progress-wrap"
+            class="update-progress-wrap"
+            hidden
+          >
+            <div class="scrape-progress-track">
+              <div
+                id="update-download-progress-fill"
+                class="scrape-progress-fill"
+                style="width: 0%"
+              ></div>
+            </div>
+            <span id="update-download-progress-label" class="section-subtext">
+              Pobieranie aktualizacji… 0%
+            </span>
+          </div>
+
+          <div class="update-action-row">
+            <button
+              type="button"
+              id="download-update-btn"
+              class="primary-dispatch-btn"
+            >
+              Pobierz aktualizację
+            </button>
+            <button
+              type="button"
+              id="install-update-btn"
+              class="primary-dispatch-btn"
+              hidden
+            >
+              Zainstaluj aktualizację
+            </button>
+            <button
+              type="button"
+              id="cancel-update-btn"
+              class="secondary-btn"
+              hidden
+            >
+              Anuluj pobieranie
+            </button>
+          </div>
+          <p id="update-action-hint" class="field-hint">
+            Pobierz plik tutaj, a potem wybierz „Zainstaluj”. Przy pierwszej instalacji Android poprosi o zgodę dla EuroAmazon Dispatch.
+          </p>
+        </div>
+
+        <p id="update-status-message" class="update-status-message">
+          Sprawdzamy aktualizacje w repozytorium GitHub Releases…
+        </p>
+        <p id="update-checked-at" class="field-hint" hidden></p>
+        <p id="update-error-message" class="field-error" hidden></p>
+
+        <details class="session-drawer update-token-drawer">
+          <summary>
+            Opcjonalny token GitHub (dla prywatnego repozytorium piotrowskiadam/amazon-price-finder)
+          </summary>
+          <div class="session-drawer-grid">
+            <div class="form-group">
+              <label for="github-token-input">Personal Access Token (Read-Only Contents)</label>
+              <input
+                type="password"
+                id="github-token-input"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="ghp_... lub github_pat_..."
+              >
+              <span id="github-token-status" class="field-hint">
+                Jeśli repozytorium jest prywatne, zapisz token z uprawnieniem odczytu Releases; dla publicznego repozytorium pole może pozostać puste.
+              </span>
+            </div>
+            <div class="form-group submit-field-group">
+              <button type="button" id="save-github-token-btn" class="secondary-btn">
+                Zapisz token i sprawdź
+              </button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
   </main>
 
   <footer class="ledger-footer">

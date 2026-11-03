@@ -66,6 +66,28 @@ const dom = {
 
   comparisonTbody: document.getElementById('comparison-tbody'),
   resetOverridesBtn: document.getElementById('reset-overrides-btn'),
+
+  androidUpdateSection: document.getElementById('android-update-section'),
+  androidInstalledVersion: document.getElementById('android-installed-version'),
+  checkUpdatesBtn: document.getElementById('check-updates-btn'),
+  updateAvailableBox: document.getElementById('update-available-box'),
+  updateAvailableTitle: document.getElementById('update-available-title'),
+  updateChangelogLink: document.getElementById('update-changelog-link'),
+  updateProgressWrap: document.getElementById('update-download-progress-wrap'),
+  updateProgressFill: document.getElementById('update-download-progress-fill'),
+  updateProgressLabel: document.getElementById(
+    'update-download-progress-label',
+  ),
+  downloadUpdateBtn: document.getElementById('download-update-btn'),
+  installUpdateBtn: document.getElementById('install-update-btn'),
+  cancelUpdateBtn: document.getElementById('cancel-update-btn'),
+  updateActionHint: document.getElementById('update-action-hint'),
+  updateStatusMessage: document.getElementById('update-status-message'),
+  updateCheckedAt: document.getElementById('update-checked-at'),
+  updateErrorMessage: document.getElementById('update-error-message'),
+  githubTokenInput: document.getElementById('github-token-input'),
+  githubTokenStatus: document.getElementById('github-token-status'),
+  saveGithubTokenBtn: document.getElementById('save-github-token-btn'),
 };
 
 function formatPln(amount) {
@@ -1286,9 +1308,145 @@ window.__handleExternalSharedInput = (sharedText) => {
   handleResolveSubmit(queryToRun);
 };
 
+// Android Self-Update UI synchronization (kino-charlie-android architecture)
+window.__onAndroidUpdateState = (snap) => {
+  if (!snap || !dom.androidUpdateSection) return;
+  dom.androidUpdateSection.hidden = false;
+
+  if (dom.androidInstalledVersion) {
+    dom.androidInstalledVersion.textContent = `Zainstalowana wersja ${snap.installedVersion || '1.0.0'}`;
+  }
+
+  if (dom.githubTokenStatus && snap.hasGithubToken) {
+    dom.githubTokenStatus.textContent =
+      'Token GitHub jest zapisany w pamięci aplikacji.';
+  }
+
+  const busy =
+    snap.checking ||
+    snap.downloadPhase === 'Downloading' ||
+    snap.downloadPhase === 'Verifying';
+
+  if (dom.checkUpdatesBtn) {
+    dom.checkUpdatesBtn.disabled = busy;
+  }
+
+  if (snap.releaseVersion) {
+    dom.updateAvailableBox.hidden = false;
+    dom.updateAvailableTitle.textContent = `Dostępna wersja ${snap.releaseVersion}`;
+    if (snap.releasePageUrl && dom.updateChangelogLink) {
+      dom.updateChangelogLink.href = snap.releasePageUrl;
+    }
+
+    if (snap.downloadPhase === 'Downloading') {
+      const total = Math.max(1, Number(snap.releaseSize) || 1);
+      const pct = Math.min(
+        100,
+        Math.max(0, Math.floor((Number(snap.downloadedBytes || 0) / total) * 100)),
+      );
+      dom.updateProgressWrap.hidden = false;
+      dom.updateProgressFill.style.width = `${pct}%`;
+      dom.updateProgressLabel.textContent = `Pobieranie aktualizacji… ${pct}%`;
+      dom.downloadUpdateBtn.hidden = true;
+      dom.installUpdateBtn.hidden = true;
+      dom.cancelUpdateBtn.hidden = false;
+      dom.updateActionHint.textContent =
+        'Trwa pobieranie pakietu APK i weryfikacja sumy kontrolnej SHA-256.';
+    } else if (snap.downloadPhase === 'Verifying') {
+      dom.updateProgressWrap.hidden = false;
+      dom.updateProgressFill.style.width = '100%';
+      dom.updateProgressLabel.textContent = 'Sprawdzamy pobrany plik…';
+      dom.downloadUpdateBtn.hidden = true;
+      dom.installUpdateBtn.hidden = true;
+      dom.cancelUpdateBtn.hidden = true;
+    } else if (snap.downloadPhase === 'Ready') {
+      dom.updateProgressWrap.hidden = true;
+      dom.downloadUpdateBtn.hidden = true;
+      dom.installUpdateBtn.hidden = false;
+      dom.cancelUpdateBtn.hidden = true;
+      dom.updateActionHint.textContent =
+        'Plik jest gotowy i zweryfikowany. Możesz zainstalować go także offline. Android poprosi o potwierdzenie instalacji.';
+    } else {
+      dom.updateProgressWrap.hidden = true;
+      dom.downloadUpdateBtn.hidden = false;
+      dom.downloadUpdateBtn.textContent =
+        snap.downloadPhase === 'Failed'
+          ? 'Pobierz ponownie'
+          : 'Pobierz aktualizację';
+      dom.installUpdateBtn.hidden = true;
+      dom.cancelUpdateBtn.hidden = true;
+      dom.updateActionHint.textContent =
+        'Pobierz plik tutaj, a potem wybierz „Zainstaluj”. Przy pierwszej instalacji Android poprosi o zgodę dla EuroAmazon Dispatch.';
+    }
+  } else {
+    dom.updateAvailableBox.hidden = true;
+  }
+
+  if (snap.checking) {
+    dom.updateStatusMessage.textContent = 'Sprawdzamy aktualizacje…';
+    dom.updateStatusMessage.hidden = false;
+  } else if (
+    !snap.releaseVersion &&
+    snap.checkedAt > 0 &&
+    !snap.checkError
+  ) {
+    dom.updateStatusMessage.textContent = 'Masz aktualną wersję aplikacji.';
+    dom.updateStatusMessage.hidden = false;
+  } else {
+    dom.updateStatusMessage.hidden = true;
+  }
+
+  if (snap.checkedAt > 0 && dom.updateCheckedAt) {
+    const dt = new Date(Number(snap.checkedAt));
+    const formatted = dt.toLocaleString('pl-PL', {
+      day: 'numeric',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Warsaw',
+    });
+    dom.updateCheckedAt.textContent = `Sprawdzono ${formatted}`;
+    dom.updateCheckedAt.hidden = false;
+  }
+
+  const errText = snap.downloadError || snap.checkError;
+  if (errText && dom.updateErrorMessage) {
+    dom.updateErrorMessage.textContent = errText;
+    dom.updateErrorMessage.hidden = false;
+  } else if (dom.updateErrorMessage) {
+    dom.updateErrorMessage.hidden = true;
+  }
+};
+
+dom.checkUpdatesBtn?.addEventListener('click', () => {
+  window.EuroAmazonAndroid?.checkUpdates?.();
+});
+
+dom.downloadUpdateBtn?.addEventListener('click', () => {
+  window.EuroAmazonAndroid?.downloadUpdate?.();
+});
+
+dom.cancelUpdateBtn?.addEventListener('click', () => {
+  window.EuroAmazonAndroid?.cancelUpdateDownload?.();
+});
+
+dom.installUpdateBtn?.addEventListener('click', () => {
+  window.EuroAmazonAndroid?.installUpdate?.();
+});
+
+dom.saveGithubTokenBtn?.addEventListener('click', () => {
+  const token = dom.githubTokenInput?.value?.trim() || '';
+  window.EuroAmazonAndroid?.saveGithubToken?.(token);
+  if (dom.githubTokenInput) dom.githubTokenInput.value = '';
+});
+
 // Initial load: fetch live NBP exchange rates without auto-scraping a sample product
 // (unless ?q= query parameter is explicitly provided in the URL)
 if (isAndroidStandaloneMode()) {
+  if (dom.androidUpdateSection) {
+    dom.androidUpdateSection.hidden = false;
+  }
+  window.EuroAmazonAndroid?.requestUpdateSnapshot?.();
   fetchExchangeRatesClient()
     .then((exchangeRates) => {
       if (exchangeRates) updateFxBanner(exchangeRates);
